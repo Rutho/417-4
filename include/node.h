@@ -1,9 +1,17 @@
-#include <sys/socket.h>
+#include "queue.h"
 #include <netinet/in.h>
-typedef struct Node {
+#include <stdint.h>
+#include <sys/socket.h>
+typedef struct Node Node;
+struct Node {
 
-	struct in_addr ipAddr;
-	Node predecessor;
-	Node sucessor;
+  Node *next;
+  Node *prev;
+  uint64_t key;
+  uint32_t address;
+  uint32_t port;
+};
 
-} Node;
+Node find_successor(Node client, Node successor, uint64_t id,
+                    Node *finger_list);
+Node closest_preceding_node(Node client, uint64_t id, Node *finger_list);
