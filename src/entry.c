@@ -1,10 +1,11 @@
-#include "../include/node.h"
+#include "../include/entry.h"
 #include <stdint.h>
 // newest element in finger_list is first
-Node find_successor(Node client, Node successor, uint64_t id,
-                    Node *finger_list) {
+#include "../protobuf/chord.pb-c.h"
+Entry find_successor(Entry client, Entry successor, uint64_t id,
+                     Entry *finger_list) {
 
-  Node *ret = 0;
+  Entry *ret = 0;
 
   uint64_t lower = client.key;
 
@@ -13,17 +14,17 @@ Node find_successor(Node client, Node successor, uint64_t id,
   if (lower < id <= higher) {
     ret = &successor;
   } else {
-    Node sendTo = closest_preceding_node(client, id, finger_list);
+    Entry sendTo = closest_preceding_node(client, id, finger_list);
     // send successor request over tcp
   }
 
   return *ret;
 }
 
-Node closest_preceding_node(Node client, uint64_t id, Node *finger_list) {
+Entry closest_preceding_node(Entry client, uint64_t id, Entry *finger_list) {
 
-  Node *ret = &client;
-  Node *k;
+  Entry *ret = &client;
+  Entry *k;
   uint64_t lower = client.key;
   for (k = finger_list->next; k != finger_list; k = k->next) {
 
