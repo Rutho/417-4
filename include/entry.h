@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <sys/socket.h>
 typedef struct Entry Entry;
-struct Entry {
 
+struct Entry {
   Entry *next;
   Entry *prev;
   uint64_t key;
