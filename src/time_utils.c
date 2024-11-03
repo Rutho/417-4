@@ -43,4 +43,14 @@ double get_time_diff_now_secs(struct timeval *time1) {
     return now_secs - time1_secs;
 }
 
+void get_future_timestamp(struct timeval *time, double secs) {
+    get_timeval_now(time);
+    shift_timeval(time, secs);
+}
+
+void shift_timeval(struct timeval *time, double secs) {
+    time->tv_sec += (int) secs;
+    time->tv_usec += secs - ((int) secs);
+}
+
 #endif
