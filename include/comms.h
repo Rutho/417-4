@@ -5,4 +5,5 @@
 #include "../protobuf/chord.pb-c.h"
 ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, Entry *optional);
 void send_message(ChordMessage *chord_msg, int dest_sock);
+ChordMessage *recv_message(int dest_sock);
 #endif
