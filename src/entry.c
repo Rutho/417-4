@@ -1,7 +1,10 @@
 #include "../include/entry.h"
 #include <stdint.h>
+#include <stdlib.h>
 // newest element in finger_list is first
 #include "../protobuf/chord.pb-c.h"
+
+#include "../src/comms.h"
 Entry find_successor(Entry client, Entry successor, uint64_t id,
                      Entry *finger_list) {
 
@@ -16,6 +19,9 @@ Entry find_successor(Entry client, Entry successor, uint64_t id,
   } else {
     Entry sendTo = closest_preceding_node(client, id, finger_list);
     // send successor request over tcp
+    ChordMessage *temp;
+    temp = construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST, id, NULL);
+    send_message(temp, sendTo.socket);
   }
 
   return *ret;

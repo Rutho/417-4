@@ -1,3 +1,5 @@
+#ifndef _ENTRYH_
+#define _ENTRYH_
 #include "queue.h"
 #include <netinet/in.h>
 #include <stdint.h>
@@ -8,9 +10,11 @@ struct Entry {
   Entry *next;
   Entry *prev;
   uint64_t key;
-  struct sockaddr info
+  struct sockaddr info;
+  int socket;
 };
 
 Entry find_successor(Entry client, Entry successor, uint64_t id,
                      Entry *finger_list);
 Entry closest_preceding_node(Entry client, uint64_t id, Entry *finger_list);
+#endif

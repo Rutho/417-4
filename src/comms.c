@@ -1,67 +1,92 @@
 #ifndef _COMMS_C_
 #define _COMMS_C_
 
+#include "comms.h"
+#include "../protobuf/chord.pb-c.h"
+#include "chord.h"
+#include "entry.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "comms.h"
-#include "chord.h"
-#include "entry.h"
-
-//Sends the given ChordMessage to the given socket
+// Sends the given ChordMessage to the given socket
 void send_message(ChordMessage *chord_msg, int dest_sock) {
-    //only used to determine size of the 'len' field
-    Message msg;
+  // only used to determine size of the 'len' field
+  Message msg;
 
-    size_t chord_msg_len = chord_message__get_packed_size(chord_msg);
-    size_t buf_size = sizeof(msg.len) + chord_msg_len;
-    void *msg_buf = malloc(buf_size);
+  size_t chord_msg_len = chord_message__get_packed_size(chord_msg);
+  size_t buf_size = sizeof(msg.len) + chord_msg_len;
+  void *msg_buf = malloc(buf_size);
 
-    //I'm setting msg.len = chord_msg_len (so excludes the size of the len field itself)
-    memcpy(msg_buf, chord_msg_len, sizeof(msg.len));
-    chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
-    send(dest_sock, msg_buf, buf_size, 0);
-    free(msg_buf);
+  // I'm setting msg.len = chord_msg_len (so excludes the size of the len field
+  // itself)
+  memcpy(msg_buf, chord_msg_len, sizeof(msg.len));
+  chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
+  send(dest_sock, msg_buf, buf_size, 0);
+  free(msg_buf);
 }
 
-//Receives data from the given dest_sock and returns a ChordMessage with the received data.
+// Receives data from the given dest_sock and returns a ChordMessage with the
+// received data.
 ChordMessage *recv_message(int dest_sock) {
-    Message msg;
-    recv(dest_sock, &msg.len, sizeof(msg.len), 0);
-    msg.ChordMessage = malloc(msg.len);
+  Message msg;
+  recv(dest_sock, &msg.len, sizeof(msg.len), 0);
+  msg.ChordMessage = malloc(msg.len);
 
-    recv(dest_sock, msg.ChordMessage, msg.len, 0);
-    ChordMessage *recvd_chord_msg = chord_message__unpack(NULL, msg.len, msg.ChordMessage);
+  recv(dest_sock, msg.ChordMessage, msg.len, 0);
+  ChordMessage *recvd_chord_msg =
+      chord_message__unpack(NULL, msg.len, msg.ChordMessage);
 
-    free(msg.ChordMessage);
-    return recvd_chord_msg;
+  free(msg.ChordMessage);
+  return recvd_chord_msg;
 }
 
-//Might not be too useful. At best may be an example of one way to parse msg_case
-MessageType get_message_type(ChordMessage* chord_msg) {
-    switch (chord_msg->msg_case) {
-        case CHORD_MESSAGE__MSG_NOTIFY_REQUEST:
-            return NOTIFY_REQUEST;
-        case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE:
-            return NOTIFY_RESPONSE;
-        case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
-            return FIND_SUCCESSOR_REQUEST;
-        case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE:
-            return FIND_SUCCESSOR_RESPONSE;
-        case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST:
-            return GET_PREDECESSOR_REQUEST;
-        case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE:
-            return GET_PREDECESSOR_RESPONSE;
-        case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST:
-            return CHECK_PREDECESSOR_REQUEST;
-        case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
-            return CHECK_PREDECESSOR_RESPONSE;
-        case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST:
-            return GET_SUCCESSOR_LIST_REQUEST;
-        case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
-            return GET_SUCCESSOR_LIST_RESPONSE;
-    }
+// Might not be too useful. At best may be an example of one way to parse
+// msg_case
+MessageType get_message_type(ChordMessage *chord_msg) {
+  switch (chord_msg->msg_case) {
+  case CHORD_MESSAGE__MSG_NOTIFY_REQUEST:
+    return NOTIFY_REQUEST;
+  case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE:
+    return NOTIFY_RESPONSE;
+  case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
+    return FIND_SUCCESSOR_REQUEST;
+  case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE:
+    return FIND_SUCCESSOR_RESPONSE;
+  case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST:
+    return GET_PREDECESSOR_REQUEST;
+  case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE:
+    return GET_PREDECESSOR_RESPONSE;
+  case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST:
+    return CHECK_PREDECESSOR_REQUEST;
+  case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
+    return CHECK_PREDECESSOR_RESPONSE;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST:
+    return GET_SUCCESSOR_LIST_REQUEST;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
+    return GET_SUCCESSOR_LIST_RESPONSE;
+  }
+}
+
+ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, Entry *optional) {
+  ChordMessage *ret = 0;
+  switch (cs) {
+
+  case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
+
+    ChordMessage cloak;
+    FindSuccessorRequest rq;
+    find_successor_request__init(&rq);
+    chord_message__init(&cloak);
+    cloak.version = 417;
+
+    cloak.msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST;
+    rq.key = id;
+    cloak.find_successor_request = &rq;
+    ret = &cloak;
+    break;
+  }
+  return ret;
 }
 
 #endif
