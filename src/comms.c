@@ -58,6 +58,24 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, Entry *optional) {
     cloak.find_successor_request = &rq;
     ret = &cloak;
     break;
+  case CHORD_MESSAGE__MSG_NOTIFY_REQUEST:
+    break;
+  case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE:
+    break;
+  case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE:
+    break;
+  case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST:
+    break;
+  case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE:
+    break;
+  case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST:
+    break;
+  case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
+    break;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST:
+    break;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
+    break;
   }
   return ret;
 }
