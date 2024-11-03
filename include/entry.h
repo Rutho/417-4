@@ -8,8 +8,7 @@ struct Entry {
   Entry *next;
   Entry *prev;
   uint64_t key;
-  uint32_t address;
-  uint32_t port;
+  struct sockaddr info
 };
 
 Entry find_successor(Entry client, Entry successor, uint64_t id,
