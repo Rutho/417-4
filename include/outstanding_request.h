@@ -1,3 +1,5 @@
+#ifndef _OUTSTANDING_REQUESTH_
+#define _OUTSTANDING_REQUESTH_
 #include "../protobuf/chord.pb-c.h"
 
 enum Msg_Type {
@@ -19,3 +21,5 @@ typedef struct OutstandingRequest {
 OutstandingRequest *construct_outstanding_request(int query_id,
                                                   Msg_Type message_type,
                                                   int finger_index);
+
+#endif

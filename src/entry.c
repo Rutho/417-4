@@ -1,4 +1,5 @@
 #include "../include/entry.h"
+#include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,16 +10,23 @@
 #include "../include/outstanding_request.h"
 
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
-                    Entry *successor_list, OutstandingRequest *request_queue) {
+                    Entry *successor_list, OutstandingRequest *request_queue,
+                    enum Msg_Type M) {
 
   Entry *ret = 0;
 
   uint64_t lower = client.key;
 
-  uint64_t higher = successor.key;
+  Entry *k;
+  Entry *successor;
+  successor = finger_list->prev;
+
+  uint64_t higher = successor->key;
 
   if (lower < id <= higher) {
-    ret = &successor;
+    ret = successor;
+    OutstandingRequest *temp = construct_outstanding_request(-1, M, -1);
+    InsertDQ(request_queue, temp);
 
   } else {
   }

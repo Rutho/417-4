@@ -17,7 +17,8 @@ struct Entry {
 };
 
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
-                    Entry *successor_list, OutstandingRequest *request_queue);
+                    Entry *successor_list, OutstandingRequest *request_queue,
+                    enum Msg_Type M);
 Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
                               Entry *successor_list);
 Entry *init_entry(uint64_t key, struct sockaddr *address);
