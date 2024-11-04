@@ -10,7 +10,8 @@ struct Entry {
   Entry *next;
   Entry *prev;
   uint64_t key;
-  struct sockaddr info;
+  uint64_t address;
+  uint32_t port;
   int socket;
 };
 
