@@ -41,22 +41,16 @@ void closest_preceding_node(Entry client, uint64_t id, Entry *finger_list) {
   return *ret;
 }
 
-void stabilize_send(uint64_t id, int dest_sock, OutstandingRequest *request_queue) {
-  ChordMessage *msg = construct_msg(CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST, id, NULL);
-  int query_id = send_message(msg, dest_sock);
-  OutstandingRequest *new_req = construct_outstanding_request(query_id, CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST, 0);
-  InsertDQ(request_queue, new_req);
-}
-
-void init_entry(uint64_t key, struct sockaddr *address) {
+Entry *init_entry(uint64_t key, struct sockaddr *address) {
   Entry *entry = (Entry *)malloc(sizeof(Entry));
   entry->key = key;
   memcpy(&entry->address, address, sizeof(Entry));
+  return entry;
 }
 
-void join_chord_ring(Entry *client, Entry *node_to_join, int sock, OutstandingRequest *request_queue) {
+void join_chord_ring(Entry *client, struct sockaddr *join_addr, int sock, OutstandingRequest *request_queue) {
   ChordMessage *msg = construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST, client->key, NULL);
-  int query_id = send_message(msg, sock);
+  int query_id = send_message(msg, sock, join_addr);
   OutstandingRequest *new_req = construct_outstanding_request(query_id, CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST, 0);
   InsertDQ(request_queue, new_req);
 }
@@ -73,11 +67,18 @@ void create_chord_ring(Entry *client, Entry *finger_table, Entry *successor_list
   successor_list->next = successor_list->prev = successor_list;
 }
 
-void check_predecessor(Entry *client, int sock, OutstandingRequest *request_queue) {
+void check_predecessor(Entry *client, struct sockaddr *dest_addr, int sock, OutstandingRequest *request_queue) {
   ChordMessage *temp;
   //key not required for message of this type
   temp = construct_msg(CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST, client->key, NULL);
-  int query_id = send_message(temp, sock);
+  int query_id = send_message(temp, sock, dest_addr);
   OutstandingRequest *new_req = construct_outstanding_request(query_id, CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST, 0);
+  InsertDQ(request_queue, new_req);
+}
+
+void stabilize_send(uint64_t id, struct sockaddr *dest_addr, int sock, OutstandingRequest *request_queue) {
+  ChordMessage *msg = construct_msg(CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST, id, NULL);
+  int query_id = send_message(msg, sock, dest_addr);
+  OutstandingRequest *new_req = construct_outstanding_request(query_id, CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST, 0);
   InsertDQ(request_queue, new_req);
 }

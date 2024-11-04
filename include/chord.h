@@ -5,6 +5,12 @@
 // Length of a Chord Node or item key
 const uint8_t KEY_LEN = 8;
 
+typedef enum PeriodicUpdateFlag {
+    CHECK_PREDECESSOR = 1,
+    FIX_FINGERS = 2,
+    STABILIZE = 3,
+} PeriodicUpdateFlag;
+
 /**
  * @brief Used to send messages to other Chord Nodes.
  * 

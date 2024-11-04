@@ -5,6 +5,6 @@
 #include "../protobuf/chord.pb-c.h"
 
 ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, Entry *optional);
-int send_message(ChordMessage *chord_msg, int dest_sock);
-ChordMessage *recv_message(int dest_sock);
+int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info);
+ChordMessage *recv_message(int sock, struct sockaddr *info);
 #endif

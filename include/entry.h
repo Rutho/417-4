@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <stdint.h>
 #include <sys/socket.h>
+#include "outstanding_request.h"
 typedef struct Entry Entry;
 
 struct Entry {
@@ -18,4 +19,10 @@ struct Entry {
 Entry find_successor(Entry client, Entry successor, uint64_t id,
                      Entry *finger_list);
 Entry closest_preceding_node(Entry client, uint64_t id, Entry *finger_list);
+Entry *init_entry(uint64_t key, struct sockaddr *address);
+void join_chord_ring(Entry *client, struct sockaddr *join_addr, int sock, OutstandingRequest *request_queue);
+void create_chord_ring(Entry *client, Entry *finger_table, Entry *successor_list);
+void check_predecessor(Entry *client, struct sockaddr *dest_addr, int sock, OutstandingRequest *request_queue);
+void stabilize_send(uint64_t id, struct sockaddr *dest_addr, int sock, OutstandingRequest *request_queue);
+
 #endif

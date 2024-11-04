@@ -96,3 +96,11 @@ uint64_t sha1sum_truncated_head(uint8_t *sha1_hash)
     return be64toh(truncated_sha1);
 }
 
+void concatenate_port_addr(uint8_t *port, uint8_t *addr, uint8_t **out) {
+	//port = 2 bytes, addr = 4 bytes
+	uint8_t *temp = (uint8_t *)malloc(6);
+	memcpy(temp, port, 2);
+	memcpy(temp + 2, addr, 4);
+	*out = temp;
+}
+
