@@ -1,20 +1,23 @@
+#include "../include/chord.h"
+#include "../include/chord_arg_parser.h"
+#include "../include/hash.h"
+#include "time_utils.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/time.h>
-
-#include "../include/hash.h"
-#include "chord.h"
-#include "time_utils.h"
-#include "chord_arg_parser.h"
-
+#define STDIN 0
 void printKey(uint64_t key) { printf("%" PRIu64, key); }
 
-//Sets next timeout to the closest periodic update to come
-//Returns a flag for select to indicate what action (check, fix, stab) to do when it times out
-//0 for check predecessor, 1 for fix fingers, 2 for stabilize.
-int next_timeout(struct timeval *next_check_pred, struct timeval *next_fix_fingers, 
-					 struct timeval *next_stabilize, struct timeval *timeout) {
+// Sets next timeout to the closest periodic update to come
+// Returns a flag for select to indicate what action (check, fix, stab) to do
+// when it times out 0 for check predecessor, 1 for fix fingers, 2 for
+// stabilize.
+int next_timeout(struct timeval *next_check_pred,
+                 struct timeval *next_fix_fingers,
+                 struct timeval *next_stabilize, struct timeval *timeout) {
   struct timeval *next_action_timeval;
   int action_flag = -1;
 
@@ -44,10 +47,11 @@ int next_timeout(struct timeval *next_check_pred, struct timeval *next_fix_finge
 
 int main(int argc, char *argv[]) {
   struct chord_arguments args = chord_parseopt(argc, argv);
-  
-  //TODO: setup the node (create/join chord ring, init ring table and successor list, etc)
 
-  //Initialize timevals for periodic updates
+  // TODO: setup the node (create/join chord ring, init ring table and successor
+  // list, etc)
+
+  // Initialize timevals for periodic updates
   struct timeval time_now;
   get_timeval_now(&time_now);
   struct timeval next_check_pred_time;
@@ -56,13 +60,33 @@ int main(int argc, char *argv[]) {
   get_future_timestamp(&next_fix_fingers_time, args.fix_fingers_period);
   struct timeval next_stabilize_time;
   get_future_timestamp(&next_stabilize_time, args.stablize_period);
-
-  while (1) {
-    struct timeval timeout;
-    int next_flag = next_timeout(&next_check_pred_time, &next_fix_fingers_time, &next_stabilize_time, &timeout);
-
-    //TODO:create and populate fd_set for select
+  // setting up fd set
+  fd_set incoming;
+  int maxfd;
+  int ssock;
+  ssock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  assert(ssock >= 0);
+  FD_SET(ssock, &incoming);
+  maxfd = ssock;
+  struct sockaddr_in localaddr = args.my_address;
+  int bval = bind(ssock, (struct sockaddr *)&localaddr, sizeof(localaddr));
+  assert(bval >= 0);
+  FD_ZERO(&incoming);
+  FD_SET(STDIN, &incoming);
+  if (STDIN > ssock) {
+    maxfd = STDIN;
   }
-  
+  while (1) {
+
+    struct timeval timeout;
+    int next_flag = next_timeout(&next_check_pred_time, &next_fix_fingers_time,
+                                 &next_stabilize_time, &timeout);
+
+    // TODO:create and populate fd_set for select
+    //
+    int s_turn = select(maxfd + 1, &incoming, NULL, NULL, NULL);
+    // switch on this
+  }
+
   return 0;
 }
