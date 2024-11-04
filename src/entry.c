@@ -6,6 +6,8 @@
 #include "../protobuf/chord.pb-c.h"
 
 #include "../include//comms.h"
+#include "../include/outstanding_request.h"
+
 void find_successor(Entry client, Entry successor, uint64_t id,
                     Entry *finger_list, sendq s, Type M) {
 

@@ -82,8 +82,6 @@ int main(int argc, char *argv[]) {
     int next_flag = next_timeout(&next_check_pred_time, &next_fix_fingers_time,
                                  &next_stabilize_time, &timeout);
 
-    // TODO:create and populate fd_set for select
-    //
     int s_turn = select(maxfd + 1, &incoming, NULL, NULL, NULL);
     // switch on this
   }
