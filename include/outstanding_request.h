@@ -2,13 +2,12 @@
 #define _OUTSTANDING_REQUESTH_
 #include "../protobuf/chord.pb-c.h"
 
-enum Msg_Type {
+typedef enum Msg_Type {
   join_find_successor,
   fix_fingers_find_successor,
   local_fix_fingers_find_successor,
   local_join_find_successor
-
-};
+} Msg_Type;
 
 typedef struct OutstandingRequest {
   OutstandingRequest *next;
