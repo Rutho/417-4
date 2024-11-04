@@ -14,7 +14,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
 	{
 		/* Validate that port is correct and a number, etc!! */
 		uint16_t port = atoi(arg);
-		if (0 /* port is invalid */) {
+		if (port <= 0) {
 			argp_error(state, "Invalid option for a port, must be a number");
 		}
 		args->my_address.sin_family = AF_INET;
@@ -40,7 +40,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
 	{
 		/* Validate that port is correct and a number, etc!! */
 		uint16_t port = atoi(arg);
-		if (0 /* port is invalid */) {
+		if (port <= 0) {
 			argp_error(state, "Invalid option for a port, must be a number");
 		}
         args->join_address.sin_port = htons(port);
@@ -51,7 +51,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
     case 400:
 	{
         int ts_arg = atoi(arg);
-        if (0 /*number is invalid*/) {
+        if (ts_arg < 1 || ts_arg > 600) {
 			argp_error(state, "Invalid option for a stablize period");
         } else {
             args->stablize_period = (uint16_t)ts_arg;
@@ -63,7 +63,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
     case 401:
 	{
         int ts_arg = atoi(arg);
-        if (0 /*number is invalid*/) {
+        if (ts_arg < 1 || ts_arg > 600) {
 			argp_error(state, "Invalid option for a fix fingers period");
         } else {
             args->fix_fingers_period = (uint16_t)ts_arg;
@@ -75,7 +75,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
     case 402:
 	{
         int ts_arg = atoi(arg);
-        if (0 /*number is invalid*/) {
+        if (ts_arg < 1 || ts_arg > 6) {
 			argp_error(state, "Invalid option for a check predecessor period");
         } else {
             args->check_predecessor_period = (uint16_t)ts_arg;
@@ -86,7 +86,8 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
     // --successors, -r number of sucessors
     case 'r':
 	{
-        if (0 /*number is invalid*/) {
+				int r = (uint8_t)atoi(arg);
+        if (r < 1 || r > 32) {
 			argp_error(state, "Invalid option for successor count");
         } else {
             args->num_successors = (uint8_t)atoi(arg);
@@ -97,7 +98,9 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
 	// --id, -i
     case 'i':
 	{
-        if (0 /*string is an invalid identification*/) {
+				char err[64] = "not modified";
+				int i = (uint64_t)strtoull(arg, err, 10);
+        if (strcmp(err, "not modified") != 0) {
 			argp_error(state, "Invalid ID");
         } else {
             args->id = (uint64_t)strtoull(arg, NULL, 10);
