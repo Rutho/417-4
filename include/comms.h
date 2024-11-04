@@ -13,6 +13,7 @@ typedef struct OutstandingRequest {
 } OutstandingRequest;
 
 ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, Entry *optional);
-void send_message(ChordMessage *chord_msg, int dest_sock);
+int send_message(ChordMessage *chord_msg, int dest_sock);
 ChordMessage *recv_message(int dest_sock);
+OutstandingRequest *construct_outstanding_request(int query_id, ChordMessage__MsgCase message_type, int finger_index);
 #endif

@@ -12,21 +12,39 @@
 #include "../include/comms.h"
 #include "entry.h"
 
+<<<<<<< HEAD
 // Sends the given ChordMessage to the given socket
 void send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   // only used to determine size of the 'len' field
   Message msg;
+=======
+static int query_id = 1;
+
+//Sends the given ChordMessage to the given socket
+int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
+    //only used to determine size of the 'len' field
+    Message msg;
+>>>>>>> f2f18d5 (added functions for node initialization and setup, and sends for some message types)
 
   size_t chord_msg_len = chord_message__get_packed_size(chord_msg);
   size_t buf_size = sizeof(msg.len) + chord_msg_len;
   void *msg_buf = malloc(buf_size);
 
+<<<<<<< HEAD
   // I'm setting msg.len = chord_msg_len (so excludes the size of the len field
   // itself)
   memcpy(msg_buf, &chord_msg_len, sizeof(msg.len));
   chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
   sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
   free(msg_buf);
+=======
+    //I'm setting msg.len = chord_msg_len (so excludes the size of the len field itself)
+    memcpy(msg_buf, chord_msg_len, sizeof(msg.len));
+    chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
+    sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
+    free(msg_buf);
+    return query_id++;
+>>>>>>> f2f18d5 (added functions for node initialization and setup, and sends for some message types)
 }
 
 // Receives data from the given dest_sock and returns a ChordMessage with the
@@ -163,4 +181,18 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
   return *ret;
 }
 
+<<<<<<< HEAD
 #endif
+=======
+//finger_index only relevant for fix_finger request type. finger_index won't be read when handling any other message types
+OutstandingRequest *construct_outstanding_request(int query_id, ChordMessage__MsgCase message_type, int finger_index) {
+    OutstandingRequest *out_req = (OutstandingRequest *)malloc(sizeof(OutstandingRequest));
+    out_req->query_id = query_id;
+    out_req->message_type = message_type;
+    out_req->finger_index = finger_index;
+    out_req->next = out_req->prev = out_req;
+    return out_req;
+}
+
+#endif
+>>>>>>> f2f18d5 (added functions for node initialization and setup, and sends for some message types)
