@@ -3,8 +3,14 @@
 
 #include "entry.h"
 
-Entry *init_empty_entry_list() {
-  return init_entry_list(0, NULL);
+//Initializes an "empty" list (list with only head).
+//head_value will be the value of the head.
+Entry *init_empty_entry_list(Entry *head_value) {
+  Entry *head;
+  InitDQ(head, Entry);
+  memcpy(head, head_value, sizeof(Entry));
+  head->next = head->prev = head;
+  return head;
 }
 
 //Initializes a list of entries with given size and sets all entries (except head) to the given initial value.
@@ -12,8 +18,7 @@ Entry *init_empty_entry_list() {
 //(values of head != initial value, do not use head values (other than next and prev) for anything).
 //If initial_value is NULL, treats size as 0, and vice-versa.
 Entry *init_entry_list(int size, Entry *initial_value) {
-  Entry *head;
-  InitDQ(head, Entry);
+  Entry *head = init_empty_entry_list(initial_value);
   if (size == 0 || initial_value == NULL) {
     return head;
   }

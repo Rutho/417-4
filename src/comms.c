@@ -7,12 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <math.h>
 
 #include "../include/chord.h"
 #include "../include/comms.h"
 #include "entry.h"
 
-static int query_id = 1;
+int generate_query_id() {
+  return rand();
+}
 
 //Sends the given ChordMessage to the given socket
 int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
@@ -28,7 +31,7 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
     chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
     sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
     free(msg_buf);
-    return query_id++;
+    return chord_msg->query_id;
 }
 
 // Receives data from the given dest_sock and returns a ChordMessage with the

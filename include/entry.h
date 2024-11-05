@@ -22,12 +22,13 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
                               Entry *successor_list);
 Entry *init_entry(uint64_t key, struct sockaddr *address);
-void join_chord_ring(Entry *client, struct sockaddr *join_addr, int sock,
+void join_chord_ring_send(Entry *client, struct sockaddr *join_addr, int sock,
                      OutstandingRequest *request_queue);
-void create_chord_ring(Entry *client, Entry *finger_table,
-                       Entry *successor_list);
-void check_predecessor(Entry *client, struct sockaddr *dest_addr, int sock,
-                       OutstandingRequest *request_queue);
+void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
+                       OutstandingRequest *request_queue, Msg_Type M);
+void get_predecessor_send(uint64_t id, struct sockaddr *dest_addr, int sock, 
+                     OutstandingRequest *request_queue, Msg_Type M, int finger_index);
+void handle_get_predecessor_request(Entry *predecessor, int sock, struct sockaddr *dest_addr);
 void stabilize_send(uint64_t id, struct sockaddr *dest_addr, int sock,
                     OutstandingRequest *request_queue);
 

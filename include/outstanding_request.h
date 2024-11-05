@@ -6,7 +6,8 @@ typedef enum Msg_Type {
   join_find_successor,
   fix_fingers_find_successor,
   local_fix_fingers_find_successor,
-  local_join_find_successor
+  local_join_find_successor,
+  stabilize_get_predecessor,
 } Msg_Type;
 
 typedef struct OutstandingRequest {
@@ -14,7 +15,7 @@ typedef struct OutstandingRequest {
   OutstandingRequest *prev;
   int query_id;
   Msg_Type message_type;
-  int finger_index; // Only when message_type is fix_finger_request
+  int finger_index; // Only when message_type is fix_finger_find_successor
 } OutstandingRequest;
 
 OutstandingRequest *construct_outstanding_request(int query_id,
