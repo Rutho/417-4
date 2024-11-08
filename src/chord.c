@@ -5,8 +5,12 @@
 #include "../include/entry_list.h"
 #include "../include/hash.h"
 #include "time_utils.h"
+#include <arpa/inet.h>
 #include <assert.h>
+#include <endian.h>
 #include <math.h>
+#include <netinet/in.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,7 +63,7 @@ void create_chord_ring(Entry *client, Entry **finger_table,
   *successor_list = init_empty_entry_list(client);
 }
 
-int main(int argc, char *argv[]) {
+int main(intargc, char *argv[]) {
   struct chord_arguments args = chord_parseopt(argc, argv);
 
   // setting up fd set
@@ -147,7 +151,7 @@ int main(int argc, char *argv[]) {
         // find_successor will require a finger_index
         find_successor(*client, client->key + ((int)pow(2, fix_finger_index)),
                        &finger_table, &successor_list, &request_queue,
-                       fix_fingers_find_successor);
+                       fix_fingers_find_successor, fix_finger_index);
         shift_timeval(&next_fix_fingers_time, args.fix_fingers_period);
         break;
       case STABILIZE:
@@ -180,7 +184,7 @@ int main(int argc, char *argv[]) {
                          extended_key);
           uint64_t truncated_key = sha1sum_truncated_head(extended_key);
           find_successor(*client, truncated_key, finger_table, successor_list,
-                         &request_queue, );
+                         &request_queue, user_lookup, -1);
         } else if (strncmp("PrintState", buf, printstate_length)) {
         }
       }
@@ -197,6 +201,24 @@ int main(int argc, char *argv[]) {
           // Might need a separate Msg_Type for the case where find_successor is
           // called bcs of a find_successor request
           /*find_successor()*/
+          {
+            struct FindSuccessorRequest *ls = msg->find_successor_request;
+            uint64_t req_key = ls->key;
+            Entry *cessor = find_entry_at_index(finger_table, 0);
+            Entry *will_send = NULL;
+            if (is_between_inclusive(key, req_key, cessor->key)) {
+
+              will_send = cessor;
+
+            } else {
+              will_send = find_closest_predecessor_entry(finger_table, req_key);
+            }
+
+            ChordMessage sending =
+                construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE,
+                              req_key, msg->query_id, NULL);
+            send_message(msg, ssock, &src_addr);
+          }
           break;
         case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST:
           /*handle_get_predecessor_request()*/
@@ -212,11 +234,7 @@ int main(int argc, char *argv[]) {
           switch (msg->msg_case) {
           case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
             break;
-          case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE:
-            break;
-          case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE:
-            break;
-          case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
+          case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
             OutstandingRequest *k;
 
             for (k = request_queue.next; k != &request_queue; k = k->next) {
@@ -224,29 +242,70 @@ int main(int argc, char *argv[]) {
                 break;
               }
             }
-            struct GetSuccessorListResponse *ls =
-                msg->get_successor_list_response;
+            struct FindSuccessorResponse *ls = msg->find_successor_response;
 
-            switch (k->message_type) {
+            Node *g_pred = ls->node;
+            uint64_t lower = k->node_id;
+            uint64_t higher = g_pred->key;
+            uint64_t mid = k->input_id;
+            // we have not found the predecessor and need to send further
+            if (!(is_between_inclusive(lower, mid, higher))) {
+              int qid = generate_query_id();
+              ChordMessage ms =
+                  construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
+                                k->input_id, qid, NULL);
 
-            case (join_find_successor): {
-              Node **n_list = ls->successors;
-              int i = 0;
-              int found = 0;
-              for (i = 0; i < ls->n_successors; i++) {
-                Node *sus = n_list[i];
-                int lower = k->node_id;
-                if (lower < k->input_id <= sus)
+              struct sockaddr_in tmp;
+              tmp.sin_port = htonl(g_pred->port);
+              tmp.sin_addr.s_addr = htonl(g_pred->address);
+              tmp.sin_family = AF_INET;
+              send_message(&ms, ssock, (struct sockaddr *)&tmp);
+              OutstandingRequest *new_req =
+                  construct_outstanding_request_with_id(qid, k->message_type,
+                                                        k->finger_index,
+                                                        k->input_id, higher);
+              InsertDQ(&request_queue, new_req);
+              DelDQ(k);
+              free_request(k);
+
+            } else {
+
+              struct sockaddr_in temp;
+              temp.sin_port = htonl(g_pred->port);
+              temp.sin_addr.s_addr = htonl(g_pred->address);
+              temp.sin_family = AF_INET;
+              Entry *pred = init_entry(g_pred->key, (struct sockaddr *)&temp);
+
+              switch (k->message_type) {
+
+              case (fix_fingers_find_successor): {
+
+                insert_entry(finger_table, k->finger_index, pred);
+
+              } break;
+              case (join_find_successor): {
+                push_entry(finger_table, pred);
               }
+              case (user_lookup): {
 
-              break;
+                char adr[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, &g_pred->address, adr, sizeof(adr));
+                printf("%" PRIu64 " %s\n", pred->key, adr);
+                break;
+              }
+              default:
+                break;
+              }
             }
-            default:
-              break;
-            }
-          }
 
-          break;
+            break;
+
+          } break;
+          case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE:
+            break;
+          case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
+
+            break;
           case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE:
             break;
           }

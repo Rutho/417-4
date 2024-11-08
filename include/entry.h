@@ -18,7 +18,7 @@ struct Entry {
 
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
                     Entry *successor_list, OutstandingRequest *request_queue,
-                    enum Msg_Type M, int index);
+                    enum Msg_Type M, int index, int sock);
 Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
                               Entry *successor_list);
 Entry *init_entry(uint64_t key, struct sockaddr *address);
@@ -26,7 +26,7 @@ void join_chord_ring_send(Entry *client, int id, int rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue);
 void fix_finger_init_send(Entry *client, int id, int rev_id,
-                          struct sockaddr *join_addr,
+                          struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue, int index);
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
                             OutstandingRequest *request_queue, Msg_Type M);
@@ -37,5 +37,8 @@ void handle_get_predecessor_request(Entry *predecessor, int sock,
                                     struct sockaddr *dest_addr);
 void stabilize_send(uint64_t id, struct sockaddr *dest_addr, int sock,
                     OutstandingRequest *request_queue);
+
+int is_between_inclusive(uint64_t lower, uint64_t id, uint64_t higher);
+int is_between_exclusive(uint64_t lower, uint64_t id, uint64_t higher);
 
 #endif

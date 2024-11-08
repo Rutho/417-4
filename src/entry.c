@@ -11,7 +11,7 @@
 
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
                     Entry *successor_list, OutstandingRequest *request_queue,
-                    enum Msg_Type M, int index) {
+                    enum Msg_Type M, int index, int sock) {
 
   Entry *ret = 0;
 
@@ -25,7 +25,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
   uint64_t higher = successor->key;
 
-  if (lower < id <= higher) {
+  if (is_between_inclusive(lower, id, higher)) {
     ret = successor;
     OutstandingRequest *temp =
         construct_outstanding_request_with_id(-1, M, index, id, client.key);
@@ -43,12 +43,12 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
     case join_find_successor: {
       join_chord_ring_send(&client, id, preced->key, (struct sockaddr *)&tmp,
-                           -1, request_queue);
+                           sock, request_queue);
 
     } break;
     case fix_fingers_find_successor: {
       fix_finger_init_send(&client, id, preced->key, (struct sockaddr *)&tmp,
-                           request_queue, index);
+                           sock, request_queue, index);
     } break;
     default:
       break;
@@ -61,11 +61,12 @@ Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
 
   Entry *ret = &client;
   Entry *k;
+
   uint64_t lower = client.key;
   uint64_t finger_id;
   for (k = finger_list->next; k != finger_list; k = k->next) {
 
-    if (lower < k->key < id) {
+    if (is_between_exclusive(lower, k->key, id)) {
       finger_id = k->key;
       ret = k;
       break;
@@ -103,12 +104,12 @@ void join_chord_ring_send(Entry *client, int id, int rev_id,
 }
 
 void fix_finger_init_send(Entry *client, int id, int rev_id,
-                          struct sockaddr *join_addr,
+                          struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue, int index) {
   ChordMessage msg =
       construct_msg(CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST, id,
                     generate_query_id(), NULL);
-  int query_id = send_message(&msg, -1, join_addr);
+  int query_id = send_message(&msg, sock, join_addr);
   OutstandingRequest *new_req = construct_outstanding_request_with_id(
       query_id, fix_fingers_find_successor, index, id, rev_id);
 }
@@ -143,3 +144,35 @@ void handle_get_predecessor_request(Entry *predecessor, int sock,
 }
 
 void handle_stabilize_predecessor_response(Entry *predecessor) {}
+
+int is_between_inclusive(uint64_t lower, uint64_t id, uint64_t higher) {
+
+  if (lower < higher) {
+    if (lower < id && id <= higher) {
+      return 1;
+    } else {
+      return 0;
+    }
+  } else {
+    if (higher < id && id < lower) {
+      return 0;
+    } else {
+      return 1;
+    }
+  }
+}
+int is_between_exclusive(uint64_t lower, uint64_t id, uint64_t higher) {
+  if (lower < higher) {
+    if (lower < id && id < higher) {
+      return 1;
+    } else {
+      return 0;
+    }
+  } else {
+    if (higher < id && id < lower) {
+      return 0;
+    } else {
+      return 1;
+    }
+  }
+}
