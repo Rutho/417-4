@@ -18,17 +18,23 @@ struct Entry {
 
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
                     Entry *successor_list, OutstandingRequest *request_queue,
-                    enum Msg_Type M);
+                    enum Msg_Type M, int index);
 Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
                               Entry *successor_list);
 Entry *init_entry(uint64_t key, struct sockaddr *address);
-void join_chord_ring_send(Entry *client, struct sockaddr *join_addr, int sock,
-                     OutstandingRequest *request_queue);
+void join_chord_ring_send(Entry *client, int id, int rev_id,
+                          struct sockaddr *join_addr, int sock,
+                          OutstandingRequest *request_queue);
+void fix_finger_init_send(Entry *client, int id, int rev_id,
+                          struct sockaddr *join_addr,
+                          OutstandingRequest *request_queue, int index);
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
-                       OutstandingRequest *request_queue, Msg_Type M);
-void get_predecessor_send(uint64_t id, struct sockaddr *dest_addr, int sock, 
-                     OutstandingRequest *request_queue, Msg_Type M, int finger_index);
-void handle_get_predecessor_request(Entry *predecessor, int sock, struct sockaddr *dest_addr);
+                            OutstandingRequest *request_queue, Msg_Type M);
+void get_predecessor_send(uint64_t id, struct sockaddr *dest_addr, int sock,
+                          OutstandingRequest *request_queue, Msg_Type M,
+                          int finger_index);
+void handle_get_predecessor_request(Entry *predecessor, int sock,
+                                    struct sockaddr *dest_addr);
 void stabilize_send(uint64_t id, struct sockaddr *dest_addr, int sock,
                     OutstandingRequest *request_queue);
 
