@@ -1,4 +1,5 @@
 #include "../include/outstanding_request.h"
+#include "../include/time_utils.h"
 
 // finger_index only relevant for fix_finger request type. finger_index won't be
 // read when handling any other message types
@@ -13,6 +14,7 @@ OutstandingRequest *construct_outstanding_request(int query_id,
   out_req->next = out_req->prev = out_req;
   out_req->input_id = -1;
   out_req->node_id = -1;
+  get_time_val(out_req->start_time);
 }
 
 OutstandingRequest *construct_outstanding_request_with_id(int query_id,
@@ -27,4 +29,5 @@ OutstandingRequest *construct_outstanding_request_with_id(int query_id,
   out_req->next = out_req->prev = out_req;
   out_req->input_id = id;
   out_req->node_id = node_id;
+  get_time_val(out_req->start_time);
 }

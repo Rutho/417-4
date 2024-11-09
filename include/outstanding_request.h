@@ -1,7 +1,10 @@
 #ifndef _OUTSTANDING_REQUESTH_
 #define _OUTSTANDING_REQUESTH_
 
+#include "sys/time.h"
+
 #include "../protobuf/chord.pb-c.h"
+
 typedef enum Msg_Type {
   join_find_successor,
   fix_fingers_find_successor,
@@ -19,6 +22,7 @@ struct OutstandingRequest {
   int node_id;
   Msg_Type message_type;
   int finger_index; // Only when message_type is fix_finger_find_successor
+  struct timeval *start_time;
 };
 
 OutstandingRequest *construct_outstanding_request(int query_id,
