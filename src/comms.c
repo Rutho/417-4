@@ -9,8 +9,12 @@
 #include <string.h>
 #include <sys/socket.h>
 
+#include <endian.h>
+#include <math.h>
+
 #include "../include/chord.h"
 #include "../include/comms.h"
+#include "../include/entry_list.h"
 #include "entry.h"
 
 int generate_query_id() { return rand(); }
@@ -24,8 +28,8 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   size_t buf_size = sizeof(msg.len) + chord_msg_len;
   void *msg_buf = malloc(buf_size);
 
-  // I'm setting msg.len = chord_msg_len (so excludes the size of the len field
-  // itself)
+  // I'm settstruct sockaddr_in address;ing msg.len = chord_msg_len (so excludes
+  // the size of the len field itself)
   memcpy(msg_buf, &chord_msg_len, sizeof(msg.len));
   chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
   sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
@@ -37,8 +41,11 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
 // received data. It also saves the sockaddr info of the message sender in info
 ChordMessage *recv_message(int sock, struct sockaddr *info) {
   Message msg;
+
   socklen_t len = sizeof(struct sockaddr_in);
-  recvfrom(sock, &msg.len, sizeof(msg.len), 0, info, &len);
+
+  recvfrom(sock, &msg.len, sizeof(msg.len), MSG_PEEK, info, &len);
+
   msg.ChordMessage = malloc(msg.len);
 
   recvfrom(sock, msg.ChordMessage, msg.len, 0, info, &len);
@@ -81,8 +88,8 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     cloak.msg_case = CHORD_MESSAGE__MSG_NOTIFY_REQUEST;
     cloak.query_id = qid;
     nd.key = optional->key;
-    nd.port = optional->address.sin_port;
-    nd.address = optional->address.sin_addr.s_addr;
+    nd.port = optional->port;
+    nd.address = optional->address;
     cloak.notify_request = &rq;
     rq.node = &nd;
     ret = &cloak;
@@ -111,8 +118,8 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     cloak.msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE;
     rq.key = id;
     nd.key = optional->key;
-    nd.port = optional->address.sin_port;
-    nd.address = optional->address.sin_addr.s_addr;
+    nd.port = optional->port;
+    nd.address = optional->address;
     rq.node = &nd;
     cloak.find_successor_response = &rq;
     cloak.query_id = qid;
@@ -143,8 +150,8 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     chord_message__init(&cloak);
     cloak.version = 417;
     nd.key = optional->key;
-    nd.port = optional->address.sin_port;
-    nd.address = optional->address.sin_addr.s_addr;
+    nd.port = optional->port;
+    nd.address = optional->address;
     cloak.msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE;
     rq.node = &nd;
     cloak.get_predecessor_response = &rq;
@@ -152,6 +159,7 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     ret = &cloak;
 
   } break;
+
   case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
     ChordMessage cloak;
     CheckPredecessorRequest rq;
@@ -181,10 +189,36 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     cloak.query_id = qid;
     ret = &cloak;
   } break;
-  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST:
-    break;
-  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
-    break;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST: {
+    ChordMessage cloak;
+    chord_message__init(&cloak);
+    GetSuccessorListRequest rq;
+    get_successor_list_request__init(&rq);
+    cloak.msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST;
+    cloak.query_id = qid;
+    cloak.get_successor_list_request = &rq;
+    ret = &cloak;
+
+  } break;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
+    Entry *successor_list = successor_list;
+    ChordMessage cloak;
+    GetSuccessorListResponse rsp;
+    chord_message__init(&cloak);
+    get_successor_list_response__init(&rsp);
+    rsp.n_successors = entry_list_size(successor_list);
+    rsp.successors = malloc(sizeof(Entry) * rsp.n_successors);
+    Entry *curr_successor = successor_list->next;
+    for (int i = 0; i < rsp.n_successors; i++) {
+      rsp.successors[i]->key = curr_successor->key;
+      rsp.successors[i]->address = curr_successor->address;
+      rsp.successors[i]->port = curr_successor->port;
+    }
+    cloak.get_successor_list_response = &rsp;
+    cloak.query_id = qid;
+    cloak.msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE;
+    ret = &cloak;
+  } break;
   default:
     break;
   }

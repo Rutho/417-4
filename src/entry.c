@@ -6,6 +6,7 @@
 #include <string.h>
 // newest element in finger_list is first
 #include "../protobuf/chord.pb-c.h"
+#include "../include/entry_list.h"
 
 #include "../include//comms.h"
 #include "../include/entry_list.h"
@@ -31,7 +32,6 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
     push_request(request_queue, temp);
 
   } else {
-
     Entry *preced;
     preced = closest_preceding_node(client, id, finger_list, successor_list);
     struct sockaddr_in tmp;
@@ -128,6 +128,16 @@ void fix_finger_init_send(Entry *client, int id, int rev_id,
       query_id, fix_fingers_find_successor, index, id, rev_id);
 }
 
+void handle_fix_fingers_find_successor_response(Entry *finger_table, int finger_index, Entry *resp_node) {
+  Entry *entry = find_entry_at_index(finger_table, finger_index);
+  if (is_between_inclusive()
+  entry->address = resp_node->address;
+  entry->port = resp_node->port;
+  entry->key = resp_node->key;
+}
+
+
+
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
                             OutstandingRequest *request_queue, Msg_Type M) {
   ChordMessage temp;
@@ -157,7 +167,9 @@ void handle_get_predecessor_request(Entry *predecessor, int sock,
   send_message(&msg, sock, dest_addr);
 }
 
-void handle_stabilize_predecessor_response(Entry *predecessor) {}
+void handle_stabilize_predecessor_response(Entry *predecessor) {
+  
+}
 
 int is_between_inclusive(uint64_t lower, uint64_t id, uint64_t higher) {
 

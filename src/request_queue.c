@@ -39,10 +39,10 @@ OutstandingRequest *add_request(OutstandingRequest *queue, int index, Outstandin
   if (index > request_queue_size(queue)) {
     return push_request(queue, req);
   }
-  if (index > entry_list_size(head)) {
+  if (index > entry_list_size(queue)) {
     return NULL;
   }
-  OutstandingRequest *curr_req = queue.next;
+  OutstandingRequest *curr_req = queue->next;
   OutstandingRequest *req_copy = malloc(sizeof(OutstandingRequest));
   memcpy(req_copy, req, sizeof(OutstandingRequest));
   for (int i = 0; i < index; i++) {
