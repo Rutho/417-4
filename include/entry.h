@@ -2,7 +2,6 @@
 #define _ENTRYH_
 #include "outstanding_request.h"
 #include "queue.h"
-#include <cstdint>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <sys/socket.h>
@@ -43,5 +42,8 @@ void stabilize_send(uint64_t id, struct sockaddr *dest_addr, int sock,
 
 int is_between_inclusive(uint64_t lower, uint64_t id, uint64_t higher);
 int is_between_exclusive(uint64_t lower, uint64_t id, uint64_t higher);
+void handle_fix_fingers_find_successor_response(Entry *finger_table,
+                                                int finger_index,
+                                                Entry *resp_node);
 
 #endif

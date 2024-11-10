@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 // newest element in finger_list is first
-#include "../protobuf/chord.pb-c.h"
 #include "../include/entry_list.h"
+#include "../protobuf/chord.pb-c.h"
 
 #include "../include//comms.h"
 #include "../include/entry_list.h"
@@ -36,8 +36,8 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
     preced = closest_preceding_node(client, id, finger_list, successor_list);
     struct sockaddr_in tmp;
     struct in_addr fa;
-    tmp.sin_addr.s_addr = preced->address.sin_addr.s_addr;
-    tmp.sin_port = preced->address.sin_port;
+    tmp.sin_addr.s_addr = preced->address;
+    tmp.sin_port = preced->port;
     switch (M) {
 
     case join_find_successor: {
@@ -90,8 +90,10 @@ Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
 
 Entry *init_entry(uint64_t key, struct sockaddr *address) {
   Entry *entry = (Entry *)malloc(sizeof(Entry));
+  struct sockaddr_in tmp = *(struct sockaddr_in *)address;
   entry->key = key;
-  memcpy(&entry->address, address, sizeof(Entry));
+  entry->address = ntohl(tmp.sin_addr.s_addr);
+  entry->port = ntohl(tmp.sin_port);
   return entry;
 }
 
@@ -128,15 +130,15 @@ void fix_finger_init_send(Entry *client, int id, int rev_id,
       query_id, fix_fingers_find_successor, index, id, rev_id);
 }
 
-void handle_fix_fingers_find_successor_response(Entry *finger_table, int finger_index, Entry *resp_node) {
+void handle_fix_fingers_find_successor_response(Entry *finger_table,
+                                                int finger_index,
+                                                Entry *resp_node) {
   Entry *entry = find_entry_at_index(finger_table, finger_index);
-  if (is_between_inclusive()
+
   entry->address = resp_node->address;
   entry->port = resp_node->port;
   entry->key = resp_node->key;
 }
-
-
 
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
                             OutstandingRequest *request_queue, Msg_Type M) {
@@ -167,9 +169,7 @@ void handle_get_predecessor_request(Entry *predecessor, int sock,
   send_message(&msg, sock, dest_addr);
 }
 
-void handle_stabilize_predecessor_response(Entry *predecessor) {
-  
-}
+void handle_stabilize_predecessor_response(Entry *predecessor) {}
 
 int is_between_inclusive(uint64_t lower, uint64_t id, uint64_t higher) {
 

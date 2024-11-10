@@ -5,7 +5,7 @@
 #include "../include/entry_list.h"
 #include "../include/hash.h"
 #include "../include/request_queue.h"
-#include "time_utils.h"
+#include "../include/time_utils.h"
 #include <arpa/inet.h>
 #include <assert.h>
 #include <endian.h>
@@ -88,15 +88,16 @@ int main(int argc, char *argv[]) {
   // list, etc)
   // Get id from hash of sum of concatenation of port and address
   uint8_t *concatenation;
+
   concatenate_port_addr((uint8_t *)localaddr.sin_port,
-                        (uint8_t *)localaddr.sin_addr.s_addr, &concatenation);
+                        (uint8_t *)localaddr.sin_addr.s_addr, concatenation);
   struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
   uint8_t extended_key[20];
   sha1sum_finish(ctx, concatenation,
                  sizeof(localaddr.sin_addr) + sizeof(localaddr.sin_port),
                  extended_key);
   uint64_t key = sha1sum_truncated_head(extended_key);
-
+  sha1sum_reset(ctx);
   // No need to explicitly create a new chord ring
   // Since creating a ring requires no additional set up besides initializing
   // these variables
@@ -109,9 +110,23 @@ int main(int argc, char *argv[]) {
 
   // Checks if join address was provided. Not sure if it is actually set to NULL
   // when not provided.
-  if (&args.join_address.sin_addr != NULL) {
-    join_chord_ring_send(client, (struct sockaddr *)&args.join_address, ssock,
-                         &request_queue);
+  if (&args.join_address.sin_addr != 0) {
+
+    uint8_t *concatenation;
+
+    concatenate_port_addr((uint8_t *)&args.join_address.sin_port,
+                          (uint8_t *)&args.join_address.sin_addr.s_addr,
+                          concatenation);
+    struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
+    uint8_t extended_key[20];
+    sha1sum_finish(ctx, concatenation,
+                   sizeof(localaddr.sin_addr) + sizeof(localaddr.sin_port),
+                   extended_key);
+    uint64_t newk = sha1sum_truncated_head(extended_key);
+    sha1sum_reset(ctx);
+    join_chord_ring_send(client, key, newk,
+                         (struct sockaddr *)&args.join_address, ssock,
+                         request_queue);
   }
 
   // Initialize timevals for periodic updates
@@ -136,24 +151,25 @@ int main(int argc, char *argv[]) {
                      &next_stabilize_time, &timeout);
 
     int s_turn = select(maxfd + 1, &incoming, NULL, NULL, &timeout);
-    if (select == -1) {
+    if (s_turn == -1) {
       perror("select:");
       exit(1);
     }
     // Periodic Updates
-    if (select == 0) {
+    if (s_turn == 0) {
       switch (next_periodic_update_flag) {
       case CHECK_PREDECESSOR:
         if (predecessor) {
-          check_predecessor_send(client, predecessor, ssock, &request_queue);
+          check_predecessor_send(client, predecessor, ssock, request_queue,
+                                 check_pred);
         }
         shift_timeval(&next_check_pred_time, args.check_predecessor_period);
         break;
       case FIX_FINGERS:
         // find_successor will require a finger_index
         find_successor(*client, client->key + ((int)pow(2, fix_finger_index)),
-                       &finger_table, &successor_list, &request_queue,
-                       fix_fingers_find_successor, fix_finger_index);
+                       finger_table, successor_list, request_queue,
+                       fix_fingers_find_successor, fix_finger_index, ssock);
         shift_timeval(&next_fix_fingers_time, args.fix_fingers_period);
         break;
       case STABILIZE:
@@ -161,7 +177,7 @@ int main(int argc, char *argv[]) {
           // TODO: write a function that converts address and port into struct
           // sockaddr
           get_predecessor_send(client, successor_list->next->address, ssock,
-                               &request_queue, stabilize_get_predecessor, 0);
+                               request_queue, stabilize_get_predecessor, 0);
         }
         shift_timeval(&next_stabilize_time, args.fix_fingers_period);
         break;
@@ -172,7 +188,9 @@ int main(int argc, char *argv[]) {
         int lookup_length = 6;
         int printstate_length = 10;
         char buf[101];
+        printf("> ");
         int num_bytes = read(STDIN, buf, 100);
+        printf("\n");
         if (strncmp("Lookup", buf, lookup_length)) {
           char *lookup_string = (char *)malloc(num_bytes - lookup_length);
           //+1 and -1 to account for space between lookup and string
@@ -181,12 +199,36 @@ int main(int argc, char *argv[]) {
           // Hash the string to get the key
           struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
           uint8_t extended_key[20];
-          sha1sum_finish(ctx, lookup_string, lookup_string_length,
+          sha1sum_finish(ctx, (uint8_t *)lookup_string, lookup_string_length,
                          extended_key);
           uint64_t truncated_key = sha1sum_truncated_head(extended_key);
+
           find_successor(*client, truncated_key, finger_table, successor_list,
-                         &request_queue, user_lookup, -1, ssock);
+                         request_queue, user_lookup, -1, ssock);
         } else if (strncmp("PrintState", buf, printstate_length)) {
+          char adr[INET_ADDRSTRLEN];
+          inet_ntop(AF_INET, &localaddr.sin_addr.s_addr, adr, sizeof(adr));
+          int por = ntohl(localaddr.sin_port);
+          printf("< Self %lu %s %u\n", key, adr, por);
+          Entry *k;
+          int pos = 1;
+
+          for (k = successor_list->next; k != successor_list; k = k->next) {
+            char adr[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &k->address, adr, sizeof(adr));
+            int por = ntohl(k->port);
+            printf("< Successor [%u] %lu %s %u\n", pos, k->key, adr, por);
+            pos++;
+          }
+          pos = 1;
+          for (k = finger_table->next; k != finger_table; k = k->next) {
+            char adr[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &k->address, adr, sizeof(adr));
+            int por = ntohl(k->port);
+            printf("< Finger [%u] %lu %s %u\n", pos, k->key, adr, por);
+            pos++;
+          }
+
         } else {
           // invalid user input
         }
@@ -196,12 +238,12 @@ int main(int argc, char *argv[]) {
         struct ChordMessage *msg = recv_message(ssock, &src_addr);
         // cases to handle requests
         switch (msg->msg_case) {
-        case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST:
+        case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
           ChordMessage msg_send =
               construct_msg(CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE, -1,
                             msg->query_id, client);
           send_message(&msg_send, ssock, &src_addr);
-          break;
+        } break;
         case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
           // Might need a separate Msg_Type for the case where find_successor is
           // called bcs of a find_successor request
@@ -311,8 +353,8 @@ int main(int argc, char *argv[]) {
 
               case (fix_fingers_find_successor): {
 
-                insert_entry(finger_table, k->finger_index, pred);
-
+                handle_fix_fingers_find_successor_response(
+                    finger_table, k->finger_index, pred);
               } break;
               case (join_find_successor): {
                 push_entry(finger_table, pred);
@@ -352,6 +394,8 @@ int main(int argc, char *argv[]) {
             // free_request(k);
 
           } break;
+          default:
+            break;
           }
         }
       }

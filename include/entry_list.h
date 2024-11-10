@@ -1,6 +1,6 @@
 #include "entry.h"
+Entry *init_empty_entry_list(Entry *head_value);
 
-Entry *init_empty_entry_list();
 Entry *init_entry_list(int size, Entry *initial_value);
 Entry *insert_entry(Entry *head, int index, Entry *new_entry);
 Entry *push_entry(Entry *head, Entry *new_entry);

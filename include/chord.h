@@ -1,30 +1,29 @@
 #include <inttypes.h>
 
-#include "chord.pb-c.h"
+#include "../protobuf/chord.pb-c.h"
 
 // Length of a Chord Node or item key
 const uint8_t KEY_LEN = 8;
 
 typedef enum PeriodicUpdateFlag {
-    CHECK_PREDECESSOR = 1,
-    FIX_FINGERS = 2,
-    STABILIZE = 3,
+  CHECK_PREDECESSOR = 1,
+  FIX_FINGERS = 2,
+  STABILIZE = 3,
 } PeriodicUpdateFlag;
 
 /**
  * @brief Used to send messages to other Chord Nodes.
- * 
+ *
  * NOTE: Remember, you CANNOT send pointers over the network!
  */
-typedef struct Message
-{
-    uint64_t len;
-    void *ChordMessage;
+typedef struct Message {
+  uint64_t len;
+  void *ChordMessage;
 } Message;
 
 /**
  * @brief Print out the node or item key.
- * 
+ *
  * NOTE: You are not obligated to utilize this function, it is just showing
  * you how to properly print out an unsigned 64 bit integer.
  */
