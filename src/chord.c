@@ -4,6 +4,7 @@
 #include "../include/entry.h"
 #include "../include/entry_list.h"
 #include "../include/hash.h"
+#include "../include/request_queue.h"
 #include "time_utils.h"
 #include <arpa/inet.h>
 #include <assert.h>
@@ -63,7 +64,7 @@ void create_chord_ring(Entry *client, Entry **finger_table,
   *successor_list = init_empty_entry_list(client);
 }
 
-int main(intargc, char *argv[]) {
+int main(int argc, char *argv[]) {
   struct chord_arguments args = chord_parseopt(argc, argv);
 
   // setting up fd set
@@ -104,7 +105,7 @@ int main(intargc, char *argv[]) {
   Entry *finger_table = init_empty_entry_list(client);
   Entry *successor_list = init_empty_entry_list(client);
   int fix_finger_index = 0;
-  OutstandingRequest request_queue;
+  OutstandingRequest *request_queue = init_queue();
 
   // Checks if join address was provided. Not sure if it is actually set to NULL
   // when not provided.
@@ -139,6 +140,7 @@ int main(intargc, char *argv[]) {
       perror("select:");
       exit(1);
     }
+    //Periodic Updates
     if (select == 0) {
       switch (next_periodic_update_flag) {
       case CHECK_PREDECESSOR:
@@ -176,7 +178,6 @@ int main(intargc, char *argv[]) {
           //+1 and -1 to account for space between lookup and string
           int lookup_string_length = num_bytes - lookup_length - 1;
           memcpy(lookup_string, buf + lookup_length + 1, lookup_string_length);
-
           // Hash the string to get the key
           struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
           uint8_t extended_key[20];
@@ -184,18 +185,20 @@ int main(intargc, char *argv[]) {
                          extended_key);
           uint64_t truncated_key = sha1sum_truncated_head(extended_key);
           find_successor(*client, truncated_key, finger_table, successor_list,
-                         &request_queue, user_lookup, -1);
+                         &request_queue, user_lookup, -1, ssock);
         } else if (strncmp("PrintState", buf, printstate_length)) {
+        } else {
+          //invalid user input
         }
       }
       if (FD_ISSET(ssock, &incoming)) {
         struct sockaddr src_addr;
         struct ChordMessage *msg = recv_message(ssock, &src_addr);
-
         // cases to handle requests
         switch (msg->msg_case) {
         case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST:
-          // Function to handle check_pred request and send check_pred response
+          ChordMessage msg_send = construct_msg(CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE, -1, msg->query_id, client);
+          send_message(&msg_send, ssock, &src_addr);
           break;
         case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
           // Might need a separate Msg_Type for the case where find_successor is
@@ -221,19 +224,20 @@ int main(intargc, char *argv[]) {
           }
           break;
         case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST:
-          /*handle_get_predecessor_request()*/
-          break;
+          ChordMessage msg_send = construct_msg(CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE, -1, msg->query_id, predecessor);
+          send_message(&msg_send, ssock, &src_addr);
         case CHORD_MESSAGE__MSG_NOTIFY_REQUEST:
           break;
         case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST:
+          ChordMessage msg_send = construct_msg(CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE, -1, msg->query_id, successor_list);
+          send_message(&msg_send, ssock, &src_addr);
           break;
         // message is not a request, must be a response
         default:
           // TODO:Find the outstanding request related to the received response
-
           switch (msg->msg_case) {
           case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
-            break;
+            
           case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
             OutstandingRequest *k;
 
@@ -248,7 +252,7 @@ int main(intargc, char *argv[]) {
             uint64_t lower = k->node_id;
             uint64_t higher = g_pred->key;
             uint64_t mid = k->input_id;
-            // we have not found the predecessor and need to send further
+            // we have not found the successor and need to send further
             if (!(is_between_inclusive(lower, mid, higher))) {
               int qid = generate_query_id();
               ChordMessage ms =

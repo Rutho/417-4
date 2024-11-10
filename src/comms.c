@@ -8,9 +8,11 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <math.h>
+#include <endian.h>
 
 #include "../include/chord.h"
 #include "../include/comms.h"
+#include "../include/entry_list.h"
 #include "entry.h"
 
 int generate_query_id() {
@@ -38,7 +40,7 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
 // received data. It also saves the sockaddr info of the message sender in info
 ChordMessage *recv_message(int sock, struct sockaddr *info) {
   Message msg;
-  recvfrom(sock, &msg.len, sizeof(msg.len), 0, info,
+  recvfrom(sock, &msg.len, sizeof(msg.len), MSG_PEEK, info,
            sizeof(struct sockaddr_in));
   msg.ChordMessage = malloc(msg.len);
 
@@ -155,13 +157,41 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
 
   } break;
   case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST:
-    break;
+    ChordMessage cloak;
+    chord_message__init(&cloak);
+    cloak.msg_case = CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST;
+    cloak.query_id = qid;
+    ret = &cloak;
   case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
-    break;
+    ChordMessage cloak;
+    chord_message__init(&cloak);
+    cloak.msg_case = CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE;
+    cloak.query_id = qid;
+    ret = &cloak;
   case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST:
-    break;
+    ChordMessage cloak;
+    chord_message__init(&cloak);
+    cloak.msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST;
+    cloak.query_id = qid;
+    ret = &cloak;
   case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
-    break;
+    Entry *successor_list = successor_list;
+    ChordMessage cloak;
+    GetSuccessorListResponse rsp;
+    chord_message__init(&cloak);
+    get_successor_list_response_init(&rsp);
+    rsp.n_successors = entry_list_size(successor_list);
+    rsp.successors = malloc(sizeof(Entry) * rsp.n_successors);
+    Entry *curr_successor = successor_list->next;
+    for (int i = 0; i < rsp.n_successors; i++) {
+      rsp.successors[i]->key = curr_successor->key;
+      rsp.successors[i]->address = curr_successor->address;
+      rsp.successors[i]->port = curr_successor->port;
+    }
+    cloak.get_successor_list_response = &rsp;
+    cloak.query_id = qid;
+    cloak.msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE;
+    ret = &cloak;
   default:
     break;
   }
