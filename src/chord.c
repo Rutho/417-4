@@ -217,14 +217,28 @@ int main(intargc, char *argv[]) {
             ChordMessage sending =
                 construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE,
                               req_key, msg->query_id, NULL);
-            send_message(msg, ssock, &src_addr);
+            send_message(&sending, ssock, &src_addr);
           }
           break;
         case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST:
           /*handle_get_predecessor_request()*/
           break;
-        case CHORD_MESSAGE__MSG_NOTIFY_REQUEST:
-          break;
+        case CHORD_MESSAGE__MSG_NOTIFY_REQUEST: {
+          struct NotifyRequest *ls = msg->notify_request;
+          Node *tmp = ls->node;
+          if (predecessor == NULL ||
+              is_between_exclusive(predecessor->key, tmp->key, key)) {
+            struct sockaddr_in temp;
+            temp.sin_port = htonl(tmp->port);
+            temp.sin_addr.s_addr = htonl(tmp->address);
+            temp.sin_family = AF_INET;
+            Entry *newpred = init_entry(tmp->key, (struct sockaddr *)&temp);
+            predecessor = newpred;
+          }
+          ChordMessage sending = construct_msg(
+              CHORD_MESSAGE__MSG_NOTIFY_RESPONSE, -1, msg->query_id, NULL);
+          send_message(&sending, ssock, &src_addr);
+        } break;
         case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST:
           break;
         // message is not a request, must be a response
@@ -236,11 +250,13 @@ int main(intargc, char *argv[]) {
             break;
           case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
             OutstandingRequest *k;
-
+            int rq_index = 0;
             for (k = request_queue.next; k != &request_queue; k = k->next) {
               if (k->query_id == msg->query_id) {
+
                 break;
               }
+              rq_index++;
             }
             struct FindSuccessorResponse *ls = msg->find_successor_response;
 
@@ -264,9 +280,9 @@ int main(intargc, char *argv[]) {
                   construct_outstanding_request_with_id(qid, k->message_type,
                                                         k->finger_index,
                                                         k->input_id, higher);
-              InsertDQ(&request_queue, new_req);
-              DelDQ(k);
-              free_request(k);
+              // push_entry(request_queue,new_req);
+              // delete_entry_at_index(request_queue,rq_index);
+              // free_request(k);
 
             } else {
 
@@ -306,8 +322,21 @@ int main(intargc, char *argv[]) {
           case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
 
             break;
-          case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE:
-            break;
+          case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {
+
+            OutstandingRequest *k;
+            int rq_index = 0;
+            for (k = request_queue.next; k != &request_queue; k = k->next) {
+              if (k->query_id == msg->query_id) {
+                break;
+              }
+              rq_index++;
+            }
+
+            // delete_entry_at_index(Entry *head, int index)
+            // free_request(k);
+
+          } break;
           }
         }
       }

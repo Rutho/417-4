@@ -2,9 +2,11 @@
 #define _ENTRYH_
 #include "outstanding_request.h"
 #include "queue.h"
+#include <cstdint>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 typedef struct Entry Entry;
 
 struct Entry {
@@ -13,9 +15,10 @@ struct Entry {
   uint64_t key;
   uint64_t address;
   uint32_t port;
-  int socket;
 };
-
+void user_lookup_send(Entry *client, int id, int rev_id,
+                      struct sockaddr *join_addr, int sock,
+                      OutstandingRequest *request_queue);
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
                     Entry *successor_list, OutstandingRequest *request_queue,
                     enum Msg_Type M, int index, int sock);
