@@ -143,7 +143,22 @@ int main(int argc, char *argv[]) {
   while (1) {
     char user_input[MAX_BYTES];
 
-    // TODO: Iterate through local outstanding requests and handle them
+    //Iterate through local outstanding requests and handle them
+    OutstandingRequest *curr_req = request_queue->next;
+    while (curr_req != request_queue) {
+      if (curr_req->query_id == -1) {
+        switch (curr_req->message_type) {
+        //So far, this is the only case.
+        case local_fix_fingers_find_successor:
+          Entry *old_finger = find_entry_at_index(finger_table, curr_req->finger_index);
+          //If we don't find a match, we might be misusing local requests.
+          Entry *new_finger = find_entry_by_key(successor_list, curr_req->node_id);
+          update_entry(old_finger, new_finger->key, new_finger->address, new_finger->port);
+        } 
+      }
+
+      curr_req = curr_req->next;
+    }
 
     struct timeval timeout;
     int next_periodic_update_flag =
@@ -274,8 +289,6 @@ int main(int argc, char *argv[]) {
           send_message(&msg_send, ssock, &src_addr);
         } break;
 
-          /*handle_get_predecessor_request()*/
-
         case CHORD_MESSAGE__MSG_NOTIFY_REQUEST: {
           struct NotifyRequest *ls = msg->notify_request;
           Node *tmp = ls->node;
@@ -304,13 +317,13 @@ int main(int argc, char *argv[]) {
           // TODO:Find the outstanding request related to the received response
           switch (msg->msg_case) {
           case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
-
+            delete_request_by_query_id(request_queue, msg->query_id);
           case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
             OutstandingRequest *k;
             int rq_index = 0;
             for (k = request_queue->next; k != request_queue; k = k->next) {
               if (k->query_id == msg->query_id) {
-
+                
                 break;
               }
               rq_index++;

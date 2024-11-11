@@ -9,11 +9,11 @@ typedef enum Msg_Type {
   join_find_successor,
   fix_fingers_find_successor,
   local_fix_fingers_find_successor,
-  local_join_find_successor,
   stabilize_get_predecessor,
   user_lookup,
   check_pred
 } Msg_Type;
+
 typedef struct OutstandingRequest OutstandingRequest;
 struct OutstandingRequest {
   OutstandingRequest *next;

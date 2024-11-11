@@ -8,3 +8,4 @@ int entry_list_size(Entry *head);
 int delete_entry_at_index(Entry *head, int index);
 Entry *find_entry_at_index(Entry *head, int index);
 Entry *find_closest_predecessor_entry(Entry *head, uint64_t id);
+Entry *find_entry_by_key(Entry *head, int key);

@@ -67,6 +67,7 @@ OutstandingRequest *find_request_by_query_id(OutstandingRequest *queue, int quer
   return NULL;
 }
 
+//Do NOT use this for local requests (query_id of all local requests are -1)
 void delete_request_by_query_id(OutstandingRequest *queue, int query_id) {
   OutstandingRequest *req = find_request_by_query_id(queue, query_id);
   delete_req(queue, req);
@@ -78,8 +79,8 @@ void delete_request(OutstandingRequest *queue, OutstandingRequest *req) {
     if (curr_req == req) {
       curr_req->prev->next = curr_req->next;
       curr_req->next->prev = curr_req->prev;
+      return;
     }
     curr_req = curr_req->next;
   }
 }
-

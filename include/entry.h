@@ -27,7 +27,7 @@ Entry *init_entry(uint64_t key, struct sockaddr *address);
 void join_chord_ring_send(Entry *client, int id, int rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue);
-void fix_finger_init_send(Entry *client, int id, int rev_id,
+void fix_finger_find_successor_request_send(Entry *client, int id, int rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue, int index);
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
@@ -45,5 +45,6 @@ int is_between_exclusive(uint64_t lower, uint64_t id, uint64_t higher);
 void handle_fix_fingers_find_successor_response(Entry *finger_table,
                                                 int finger_index,
                                                 Entry *resp_node);
+void update_entry(Entry *entry, uint64_t key, uint64_t address, uint32_t port);
 
 #endif

@@ -120,6 +120,21 @@ Entry *find_entry_at_index(Entry *head, int index) {
   return curr;
 }
 
+Entry *find_entry_by_key(Entry *head, int key) {
+  Entry *curr = head->next;
+  while (curr != head) {
+    if (curr->key == key) {
+      return curr;
+    }
+    curr = curr->next;
+  }
+  //We weren't looking for head and didn't find a match
+  if (head->key != key && curr == key) {
+    return NULL;
+  }
+  return curr;
+}
+
 Entry *find_closest_predecessor_entry(Entry *head, uint64_t id) {
   if (entry_list_size(head) == 0) {
     return NULL;
@@ -127,9 +142,10 @@ Entry *find_closest_predecessor_entry(Entry *head, uint64_t id) {
   Entry *closest_predecessor = head->next;
   Entry *curr = head->next;
   while (curr->next != head) {
-    if (curr->key < id && closest_predecessor->key < curr->key) {
+    if (is_between_exclusive(closest_predecessor->key, curr->key, id)) {
       closest_predecessor = curr;
     }
+    curr = curr->next;
   }
-  return curr;
+  return closest_predecessor;
 }
