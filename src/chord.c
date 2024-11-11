@@ -182,9 +182,10 @@ int main(int argc, char *argv[]) {
         break;
       case FIX_FINGERS:
         // find_successor will require a finger_index
+
         find_successor(*client, client->key + ((int)pow(2, fix_finger_index)),
                        finger_table, successor_list, request_queue,
-                       fix_fingers_find_successor, fix_finger_index, ssock);
+                       fix_fingers_find_successor, fix_finger_index++, ssock);
         shift_timeval(&next_fix_fingers_time, args.fix_fingers_period);
         break;
       case STABILIZE:
@@ -390,7 +391,7 @@ int main(int argc, char *argv[]) {
           case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE:
             break;
           case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
-
+            
             break;
           case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {
 
