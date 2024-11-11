@@ -58,12 +58,14 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
   return action_flag;
 }
 
-//Determine if req has passed the given RTO since the start of the request
-//And if we should restart it or not based on given number of (re)transmissions allowed
-//Returns 0 if not timed out (or local), 1 if timed out and to be retransmitted, 2 if timed out and out of attempts.
-//Note: n_transmissions = 1 means no retransmissions (original transmission counts in n_transmissions)
-int request_timed_out(OutstandingRequest *req, double retransmission_timeout, int n_transmissions) {
-  //Local request can't timeout
+// Determine if req has passed the given RTO since the start of the request
+// And if we should restart it or not based on given number of (re)transmissions
+// allowed Returns 0 if not timed out (or local), 1 if timed out and to be
+// retransmitted, 2 if timed out and out of attempts. Note: n_transmissions = 1
+// means no retransmissions (original transmission counts in n_transmissions)
+int request_timed_out(OutstandingRequest *req, double retransmission_timeout,
+                      int n_transmissions) {
+  // Local request can't timeout
   if (req->query_id == -1) {
     return 0;
   }
@@ -83,12 +85,11 @@ void retransmit_request(OutstandingRequest *req, int sock) {
   req->nth_transmission++;
 }
 
-//TODO: if this node is in finger table/successor list, we remove it.
-//But if we do, what values should we replace it with (push everything down one to fix gap for succ list?)
-//What about finger list? let fix_fingers eventually fill the gap?
-void handle_node_failure(OutstandingRequest *req) {
-  
-}
+// TODO: if this node is in finger table/successor list, we remove it.
+// But if we do, what values should we replace it with (push everything down one
+// to fix gap for succ list?) What about finger list? let fix_fingers eventually
+// fill the gap?
+void handle_node_failure(OutstandingRequest *req) {}
 
 // Creates a new chord ring. Initializes finger table and successor list values
 // to the client itself
@@ -183,7 +184,8 @@ int main(int argc, char *argv[]) {
       if (curr_req->query_id == -1) {
         switch (curr_req->message_type) {
         // So far, this is the only case.
-        case local_fix_fingers_find_successor:
+        // we dont need a case for it being local the -1 already makes it local.
+        case fix_fingers_find_successor: {
           Entry *old_finger =
               find_entry_at_index(finger_table, curr_req->finger_index);
           // If we don't find a match, we might be misusing local requests.
@@ -191,27 +193,47 @@ int main(int argc, char *argv[]) {
               find_entry_by_key(successor_list, curr_req->node_id);
           update_entry(old_finger, new_finger->key, new_finger->address,
                        new_finger->port);
+
+        } break;
+        case join_find_successor: {
+          // this should never happen but is handled
+          break;
+        }
+        case user_lookup: {
+
+          Entry *new_finger =
+              find_entry_by_key(successor_list, curr_req->node_id);
+          char adr[INET_ADDRSTRLEN];
+          inet_ntop(AF_INET, &new_finger->address, adr, sizeof(adr));
+          printf("< ");
+          printf("%" PRIu64 " %s %u\n", new_finger->key, adr, new_finger->port);
+        }
+        default:
+          break;
         }
       }
 
       curr_req = curr_req->next;
     }
 
-    //Handle timed out requests
+    // TODO: remove request from list
+
+    // Handle timed out requests
     curr_req = request_queue->next;
     while (curr_req != request_queue) {
-      switch (request_timed_out(curr_req, RETRANSMIT_TIMEOUT_SECS, TRANSMISSION_ATTEMPTS)) {
-        //Not timed out
-        case 0:
-          break;
-        //Timed out and can still attempt to retransmit
-        case 1:
-          retransmit_request(curr_req, ssock);
-          break;
-        //Timed out and out of retransmission attempts
-        case 2:
-          handle_node_failure(curr_req);
-          break;
+      switch (request_timed_out(curr_req, RETRANSMIT_TIMEOUT_SECS,
+                                TRANSMISSION_ATTEMPTS)) {
+      // Not timed out
+      case 0:
+        break;
+      // Timed out and can still attempt to retransmit
+      case 1:
+        retransmit_request(curr_req, ssock);
+        break;
+      // Timed out and out of retransmission attempts
+      case 2:
+        handle_node_failure(curr_req);
+        break;
       }
       curr_req = curr_req->next;
     }
@@ -253,8 +275,6 @@ int main(int argc, char *argv[]) {
           jaddr.sin_addr.s_addr = successor_list->next->address;
           jaddr.sin_port = successor_list->next->port;
 
-          get_predecessor_send(client, (struct sockaddr *)&jaddr, ssock,
-                               request_queue, stabilize_get_predecessor, 0);
           get_predecessor_send(key, (struct sockaddr *)&jaddr, ssock,
                                request_queue, get_pred, -1);
         }
@@ -324,8 +344,8 @@ int main(int argc, char *argv[]) {
           send_message(&msg_send, ssock, &src_addr);
         } break;
         case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
-          // Might need a separate Msg_Type for the case where find_successor is
-          // called bcs of a find_successor request
+          // Might need a separate Msg_Type for the case where find_successor
+          // is called bcs of a find_successor request
           /*find_successor()*/
           {
             struct FindSuccessorRequest *ls = msg->find_successor_request;
@@ -378,7 +398,8 @@ int main(int argc, char *argv[]) {
         } break;
         // message is not a request, must be a response
         default:
-          // TODO:Find the outstanding request related to the received response
+          // TODO:Find the outstanding request related to the received
+          // response
           switch (msg->msg_case) {
           case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
             delete_request_by_query_id(request_queue, msg->query_id);
@@ -411,9 +432,9 @@ int main(int argc, char *argv[]) {
               tmp.sin_family = AF_INET;
               send_message(&msg, ssock, (struct sockaddr *)&tmp);
               OutstandingRequest *new_req =
-                  construct_outstanding_request_with_id(qid, k->message_type,
-                                                        k->finger_index,
-                                                        k->input_id, higher, &msg, (struct sockaddr *)&tmp);
+                  construct_outstanding_request_with_id(
+                      qid, k->message_type, k->finger_index, k->input_id,
+                      higher, &msg, (struct sockaddr *)&tmp);
               // push_entry(request_queue,new_req);
               // delete_entry_at_index(request_queue,rq_index);
               // free_request(k);
@@ -421,8 +442,8 @@ int main(int argc, char *argv[]) {
             } else {
 
               struct sockaddr_in temp;
-              temp.sin_port = htonl(g_pred->port);
-              temp.sin_addr.s_addr = htonl(g_pred->address);
+              temp.sin_port = ntohl(g_pred->port);
+              temp.sin_addr.s_addr = ntohl(g_pred->address);
               temp.sin_family = AF_INET;
               Entry *pred = init_entry(g_pred->key, (struct sockaddr *)&temp);
 
@@ -440,7 +461,8 @@ int main(int argc, char *argv[]) {
 
                 char adr[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &g_pred->address, adr, sizeof(adr));
-                printf("%" PRIu64 " %s\n", pred->key, adr);
+                printf("< ");
+                printf("%" PRIu64 " %s %u\n", pred->key, adr, g_pred->port);
                 break;
               }
               default:
