@@ -20,6 +20,8 @@
 #include <unistd.h>
 #define STDIN 0
 #define MAX_BYTES 50
+#define RETRANSMIT_TIMEOUT_SECS 10
+#define TRANSMISSION_ATTEMPTS 2
 void printKey(uint64_t key) { printf("%" PRIu64, key); }
 
 // Sets next timeout to the closest periodic update to come
@@ -54,6 +56,38 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
   }
 
   return action_flag;
+}
+
+//Determine if req has passed the given RTO since the start of the request
+//And if we should restart it or not based on given number of (re)transmissions allowed
+//Returns 0 if not timed out (or local), 1 if timed out and to be retransmitted, 2 if timed out and out of attempts.
+//Note: n_transmissions = 1 means no retransmissions (original transmission counts in n_transmissions)
+int request_timed_out(OutstandingRequest *req, double retransmission_timeout, int n_transmissions) {
+  //Local request can't timeout
+  if (req->query_id == -1) {
+    return 0;
+  }
+  if (get_time_diff_secs_now(req) >= retransmission_timeout) {
+    if (req->nth_transmission >= n_transmissions) {
+      return 2;
+    } else {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+void retransmit_request(OutstandingRequest *req, int sock) {
+  send_message(req->sent_message, sock, req->dest_addr);
+  get_timeval_now(req->start_time);
+  req->nth_transmission++;
+}
+
+//TODO: if this node is in finger table/successor list, we remove it.
+//But if we do, what values should we replace it with (push everything down one to fix gap for succ list?)
+//What about finger list? let fix_fingers eventually fill the gap?
+void handle_node_failure(OutstandingRequest *req) {
+  
 }
 
 // Creates a new chord ring. Initializes finger table and successor list values
@@ -160,6 +194,25 @@ int main(int argc, char *argv[]) {
         }
       }
 
+      curr_req = curr_req->next;
+    }
+
+    //Handle timed out requests
+    curr_req = request_queue->next;
+    while (curr_req != request_queue) {
+      switch (request_timed_out(curr_req, RETRANSMIT_TIMEOUT_SECS, TRANSMISSION_ATTEMPTS)) {
+        //Not timed out
+        case 0:
+          break;
+        //Timed out and can still attempt to retransmit
+        case 1:
+          retransmit_request(curr_req, ssock);
+          break;
+        //Timed out and out of retransmission attempts
+        case 2:
+          handle_node_failure(curr_req);
+          break;
+      }
       curr_req = curr_req->next;
     }
 

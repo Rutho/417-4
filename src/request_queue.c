@@ -79,6 +79,7 @@ void delete_request(OutstandingRequest *queue, OutstandingRequest *req) {
     if (curr_req == req) {
       curr_req->prev->next = curr_req->next;
       curr_req->next->prev = curr_req->prev;
+      free_outstanding_request(req);
       return;
     }
     curr_req = curr_req->next;
