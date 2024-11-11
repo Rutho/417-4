@@ -277,6 +277,9 @@ int main(int argc, char *argv[]) {
 
           get_predecessor_send(key, (struct sockaddr *)&jaddr, ssock,
                                request_queue, get_pred, -1);
+          // TODO:
+          // get_successor_list_send(key,(struct sockaddr
+          // *)&jaddr,ssock,request_queue, stablize_get_successor_list);
         }
         shift_timeval(&next_stabilize_time, args.fix_fingers_period);
         break;

@@ -13,7 +13,8 @@ typedef enum Msg_Type {
   user_lookup,
   check_pred,
   notify_send,
-  get_pred
+  get_pred,
+  stablize_get_successor_list
 } Msg_Type;
 
 typedef struct OutstandingRequest OutstandingRequest;
@@ -26,7 +27,7 @@ struct OutstandingRequest {
   Msg_Type message_type;
   int finger_index; // Only when message_type is fix_finger_find_successor
   struct timeval *start_time;
-  int nth_transmission; //1 if original transmission, +1 if retransmission
+  int nth_transmission; // 1 if original transmission, +1 if retransmission
   ChordMessage *sent_message;
   struct sockaddr *dest_addr;
 };
@@ -37,12 +38,9 @@ OutstandingRequest *construct_outstanding_request(int query_id,
                                                   ChordMessage *sent_msg,
                                                   struct sockaddr *dest_addr;);
 
-OutstandingRequest *construct_outstanding_request_with_id(int query_id,
-                                                          Msg_Type message_type,
-                                                          int finger_index,
-                                                          int id, int node_id,
-                                                          ChordMessage *sent_msg,
-                                                          struct sockaddr *dest_addr);
+OutstandingRequest *construct_outstanding_request_with_id(
+    int query_id, Msg_Type message_type, int finger_index, int id, int node_id,
+    ChordMessage *sent_msg, struct sockaddr *dest_addr);
 
 void free_outstanding_request(OutstandingRequest *req);
 
