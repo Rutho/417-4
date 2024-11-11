@@ -15,6 +15,9 @@ struct Entry {
   uint64_t address;
   uint32_t port;
 };
+
+void send_notif(Entry *client, int id, int rev_id, struct sockaddr *join_addr,
+                int sock, OutstandingRequest *request_queue);
 void user_lookup_send(Entry *client, int id, int rev_id,
                       struct sockaddr *join_addr, int sock,
                       OutstandingRequest *request_queue);
@@ -28,8 +31,10 @@ void join_chord_ring_send(Entry *client, int id, int rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue);
 void fix_finger_find_successor_request_send(Entry *client, int id, int rev_id,
-                          struct sockaddr *join_addr, int sock,
-                          OutstandingRequest *request_queue, int index);
+                                            struct sockaddr *join_addr,
+                                            int sock,
+                                            OutstandingRequest *request_queue,
+                                            int index);
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
                             OutstandingRequest *request_queue, Msg_Type M);
 void get_predecessor_send(uint64_t id, struct sockaddr *dest_addr, int sock,
