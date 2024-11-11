@@ -401,7 +401,7 @@ int main(int argc, char *argv[]) {
             // we have not found the successor and need to send further
             if (!(is_between_inclusive(lower, mid, higher))) {
               int qid = generate_query_id();
-              ChordMessage ms =
+              ChordMessage msg =
                   construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
                                 k->input_id, qid, NULL);
 
@@ -409,11 +409,11 @@ int main(int argc, char *argv[]) {
               tmp.sin_port = htonl(g_pred->port);
               tmp.sin_addr.s_addr = htonl(g_pred->address);
               tmp.sin_family = AF_INET;
-              send_message(&ms, ssock, (struct sockaddr *)&tmp);
+              send_message(&msg, ssock, (struct sockaddr *)&tmp);
               OutstandingRequest *new_req =
                   construct_outstanding_request_with_id(qid, k->message_type,
                                                         k->finger_index,
-                                                        k->input_id, higher);
+                                                        k->input_id, higher, &msg, (struct sockaddr *)&tmp);
               // push_entry(request_queue,new_req);
               // delete_entry_at_index(request_queue,rq_index);
               // free_request(k);

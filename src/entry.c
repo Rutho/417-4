@@ -29,7 +29,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
   if (is_between_inclusive(lower, id, higher)) {
     ret = successor;
     OutstandingRequest *temp =
-        construct_outstanding_request_with_id(-1, M, index, id, client.key);
+        construct_outstanding_request_with_id(-1, M, index, id, client.key, NULL, NULL);
     push_request(request_queue, temp);
 
   } else {
@@ -58,9 +58,10 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
       break;
     }
   }
+}
 
-  Entry *closest_preceding_node(Entry client, uint64_t id, Entry * finger_list,
-                                Entry * successor_list) {
+  Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
+                                Entry *successor_list) {
 
     Entry *ret = &client;
     Entry *k;
@@ -104,7 +105,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
                                      client->key, generate_query_id(), NULL);
     int query_id = send_message(&msg, sock, join_addr);
     OutstandingRequest *new_req = construct_outstanding_request_with_id(
-        query_id, user_lookup, -1, id, rev_id);
+        query_id, user_lookup, -1, id, rev_id, &msg, join_addr);
     push_request(request_queue, new_req);
   }
 
@@ -115,7 +116,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
                                      client->key, generate_query_id(), NULL);
     int query_id = send_message(&msg, sock, join_addr);
     OutstandingRequest *new_req = construct_outstanding_request_with_id(
-        query_id, notify_send, -1, id, rev_id);
+        query_id, notify_send, -1, id, rev_id, &msg, join_addr);
     push_request(request_queue, new_req);
   }
   // i am doing iterative so we send out requests for finger lists;;.
@@ -126,7 +127,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
                                      client->key, generate_query_id(), NULL);
     int query_id = send_message(&msg, sock, join_addr);
     OutstandingRequest *new_req = construct_outstanding_request_with_id(
-        query_id, join_find_successor, -1, id, rev_id);
+        query_id, join_find_successor, -1, id, rev_id, &msg, join_addr);
     push_request(request_queue, new_req);
   }
 
@@ -138,11 +139,11 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
                       generate_query_id(), NULL);
     int query_id = send_message(&msg, sock, join_addr);
     OutstandingRequest *new_req = construct_outstanding_request_with_id(
-        query_id, fix_fingers_find_successor, index, id, rev_id);
+        query_id, fix_fingers_find_successor, index, id, rev_id, &msg, join_addr);
   }
 
   void handle_fix_fingers_find_successor_response(
-      Entry * finger_table, int finger_index, Entry *resp_node) {
+    Entry * finger_table, int finger_index, Entry *resp_node) {
     Entry *entry = find_entry_at_index(finger_table, finger_index);
 
     entry->address = resp_node->address;
@@ -158,7 +159,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
     temp = construct_msg(CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST,
                          client->key, generate_query_id(), NULL);
     int query_id = send_message(&temp, sock, dest_addr);
-    OutstandingRequest *new_req = construct_outstanding_request(query_id, M, 0);
+    OutstandingRequest *new_req = construct_outstanding_request(query_id, M, 0, &temp, dest_addr);
     push_request(request_queue, new_req);
   }
 
@@ -169,7 +170,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
                                      id, generate_query_id(), NULL);
     int query_id = send_message(&msg, sock, dest_addr);
     OutstandingRequest *new_req =
-        construct_outstanding_request(query_id, M, finger_index);
+        construct_outstanding_request(query_id, M, finger_index, &msg, dest_addr);
     InsertDQ(request_queue, new_req);
   }
 

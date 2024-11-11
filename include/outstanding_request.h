@@ -42,7 +42,7 @@ OutstandingRequest *construct_outstanding_request_with_id(int query_id,
                                                           int finger_index,
                                                           int id, int node_id,
                                                           ChordMessage *sent_msg,
-                                                          struct sockaddr *dest_addr;);
+                                                          struct sockaddr *dest_addr);
 
 void free_outstanding_request(OutstandingRequest *req);
 
