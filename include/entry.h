@@ -1,5 +1,5 @@
-#ifndef _ENTRYH_
-#define _ENTRYH_
+#ifndef ENTRY_H
+#define ENTRY_H
 #include "outstanding_request.h"
 #include "queue.h"
 #include <netinet/in.h>

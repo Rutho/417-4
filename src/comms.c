@@ -201,6 +201,7 @@ ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
 
   } break;
   case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
+    // successor_list does not exist need optional argument.
     Entry *successor_list = successor_list;
     ChordMessage cloak;
     GetSuccessorListResponse rsp;

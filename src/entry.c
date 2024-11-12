@@ -31,7 +31,6 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
     OutstandingRequest *temp = construct_outstanding_request_with_id(
         -1, M, index, id, successor->key, NULL, NULL);
     push_request(request_queue, temp);
-    temp->
 
   } else {
     Entry *preced;
@@ -48,8 +47,9 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
     } break;
     case fix_fingers_find_successor: {
-      fix_finger_init_send(&client, id, preced->key, (struct sockaddr *)&tmp,
-                           sock, request_queue, index);
+      fix_finger_find_successor_request_send(&client, id, preced->key,
+                                             (struct sockaddr *)&tmp, sock,
+                                             request_queue, index);
     } break;
     case user_lookup: {
       user_lookup_send(&client, id, preced->key, (struct sockaddr *)&tmp, sock,
@@ -136,12 +136,12 @@ void fix_finger_find_successor_request_send(Entry *client, int id, int rev_id,
                                             int sock,
                                             OutstandingRequest *request_queue,
                                             int index) {
-  ChordMessage msg =
-      construct_msg(CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST, id,
-                    generate_query_id(), NULL);
+  ChordMessage msg = construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
+                                   id, generate_query_id(), NULL);
   int query_id = send_message(&msg, sock, join_addr);
   OutstandingRequest *new_req = construct_outstanding_request_with_id(
       query_id, fix_fingers_find_successor, index, id, rev_id, &msg, join_addr);
+  push_request(request_queue, new_req);
 }
 
 void handle_fix_fingers_find_successor_response(Entry *finger_table,
@@ -174,7 +174,7 @@ void get_predecessor_send(uint64_t id, struct sockaddr *dest_addr, int sock,
   int query_id = send_message(&msg, sock, dest_addr);
   OutstandingRequest *new_req =
       construct_outstanding_request(query_id, M, finger_index, &msg, dest_addr);
-  InsertDQ(request_queue, new_req);
+  push_request(request_queue, new_req);
 }
 
 void handle_get_predecessor_request(Entry *predecessor, int sock,
@@ -183,7 +183,18 @@ void handle_get_predecessor_request(Entry *predecessor, int sock,
                                    -1, generate_query_id(), predecessor);
   send_message(&msg, sock, dest_addr);
 }
+void get_successor_list_send(struct sockaddr *dest_addr, int sock,
+                             OutstandingRequest *request_queue, Msg_Type M) {
 
+  ChordMessage temp;
+  // key not required for message of this type
+  temp = construct_msg(CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST, -1,
+                       generate_query_id(), NULL);
+  int query_id = send_message(&temp, sock, dest_addr);
+  OutstandingRequest *new_req =
+      construct_outstanding_request(query_id, M, 0, &temp, dest_addr);
+  push_request(request_queue, new_req);
+}
 void handle_stabilize_predecessor_response(Entry *predecessor) {}
 
 int is_between_inclusive(uint64_t lower, uint64_t id, uint64_t higher) {

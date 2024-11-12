@@ -1,5 +1,5 @@
-#ifndef _OUTSTANDING_REQUESTH_
-#define _OUTSTANDING_REQUESTH_
+#ifndef OUTSTANDING_REQUEST_H
+#define OUTSTANDING_REQUEST_H
 
 #include "sys/time.h"
 
@@ -36,7 +36,7 @@ OutstandingRequest *construct_outstanding_request(int query_id,
                                                   Msg_Type message_type,
                                                   int finger_index,
                                                   ChordMessage *sent_msg,
-                                                  struct sockaddr *dest_addr;);
+                                                  struct sockaddr *dest_addr);
 
 OutstandingRequest *construct_outstanding_request_with_id(
     int query_id, Msg_Type message_type, int finger_index, int id, int node_id,

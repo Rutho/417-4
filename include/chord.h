@@ -1,3 +1,5 @@
+#ifndef CHORD_H
+#define CHORD_H
 #include <inttypes.h>
 
 #include "../protobuf/chord.pb-c.h"
@@ -28,3 +30,4 @@ typedef struct Message {
  * you how to properly print out an unsigned 64 bit integer.
  */
 void printKey(uint64_t key);
+#endif
