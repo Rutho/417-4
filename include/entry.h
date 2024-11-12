@@ -15,7 +15,8 @@ struct Entry {
   uint64_t address;
   uint32_t port;
 };
-
+void get_successor_list_send(struct sockaddr *dest_addr, int sock, int suc_id,
+                             OutstandingRequest *request_queue, Msg_Type M);
 void send_notif(Entry *client, int id, int rev_id, struct sockaddr *join_addr,
                 int sock, OutstandingRequest *request_queue);
 void user_lookup_send(Entry *client, int id, int rev_id,

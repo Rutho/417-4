@@ -183,7 +183,7 @@ void handle_get_predecessor_request(Entry *predecessor, int sock,
                                    -1, generate_query_id(), predecessor);
   send_message(&msg, sock, dest_addr);
 }
-void get_successor_list_send(struct sockaddr *dest_addr, int sock,
+void get_successor_list_send(struct sockaddr *dest_addr, int sock, int suc_id,
                              OutstandingRequest *request_queue, Msg_Type M) {
 
   ChordMessage temp;
@@ -191,8 +191,8 @@ void get_successor_list_send(struct sockaddr *dest_addr, int sock,
   temp = construct_msg(CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST, -1,
                        generate_query_id(), NULL);
   int query_id = send_message(&temp, sock, dest_addr);
-  OutstandingRequest *new_req =
-      construct_outstanding_request(query_id, M, 0, &temp, dest_addr);
+  OutstandingRequest *new_req = construct_outstanding_request_with_id(
+      query_id, M, -1, -1, suc_id, &temp, dest_addr);
   push_request(request_queue, new_req);
 }
 void handle_stabilize_predecessor_response(Entry *predecessor) {}

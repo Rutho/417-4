@@ -16,7 +16,7 @@ Entry *init_empty_entry_list(Entry *head_value) {
 // Initializes a list of entries with given size and sets all entries (except
 // head) to the given initial value. If size is 0, only the head is initialized
 //(values of head != initial value, do not use head values (other than next and
-//prev) for anything). If initial_value is NULL, treats size as 0, and
+// prev) for anything). If initial_value is NULL, treats size as 0, and
 // vice-versa.
 Entry *init_entry_list(int size, Entry *initial_value) {
   Entry *head = init_empty_entry_list(initial_value);
@@ -106,7 +106,18 @@ int delete_entry_at_index(Entry *head, int index) {
 
   return 1;
 }
+void wipe_entry_list(Entry *head) {
 
+  Entry *curr = head->next;
+
+  while (curr != head) {
+    Entry *tmp = curr;
+    curr = curr->next;
+    free(tmp);
+  }
+
+  head->next = head->prev = head;
+}
 // Finds entry at given index of entry list
 // returns the entry at the given index
 // Note that if index >= size, it will return last entry
@@ -128,8 +139,8 @@ Entry *find_entry_by_key(Entry *head, int key) {
     }
     curr = curr->next;
   }
-  //We weren't looking for head and didn't find a match
-  if (head->key != key && curr == key) {
+  // We weren't looking for head and didn't find a match
+  if (head->key != key && curr->key == key) {
     return NULL;
   }
   return curr;

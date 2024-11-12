@@ -22,6 +22,7 @@
 #define MAX_BYTES 50
 #define RETRANSMIT_TIMEOUT_SECS 10
 #define TRANSMISSION_ATTEMPTS 2
+#define MOD_M 64
 void printKey(uint64_t key) { printf("%" PRIu64, key); }
 
 // Sets next timeout to the closest periodic update to come
@@ -253,17 +254,26 @@ int main(int argc, char *argv[]) {
       switch (next_periodic_update_flag) {
       case CHECK_PREDECESSOR:
         if (predecessor) {
-          check_predecessor_send(client, predecessor, ssock, request_queue,
-                                 check_pred);
+          struct sockaddr_in jaddr;
+          jaddr.sin_family = AF_INET;
+          jaddr.sin_addr.s_addr = predecessor->next->address;
+          jaddr.sin_port = predecessor->next->port;
+
+          check_predecessor_send(client, (struct sockaddr *)&jaddr, ssock,
+                                 request_queue, check_pred);
         }
         shift_timeval(&next_check_pred_time, args.check_predecessor_period);
         break;
       case FIX_FINGERS:
         // find_successor will require a finger_index
-
-        find_successor(*client, client->key + ((int)pow(2, fix_finger_index)),
+        fix_finger_index++;
+        if (fix_finger_index > MOD_M) {
+          fix_finger_index = 0;
+        }
+        find_successor(*client,
+                       client->key + ((int)pow(2, (fix_finger_index - 1))),
                        finger_table, successor_list, request_queue,
-                       fix_fingers_find_successor, fix_finger_index++, ssock);
+                       fix_fingers_find_successor, fix_finger_index, ssock);
         shift_timeval(&next_fix_fingers_time, args.fix_fingers_period);
         break;
       case STABILIZE:
@@ -278,8 +288,9 @@ int main(int argc, char *argv[]) {
           get_predecessor_send(key, (struct sockaddr *)&jaddr, ssock,
                                request_queue, get_pred, -1);
           // TODO:
-          // get_successor_list_send(key,(struct sockaddr
-          // *)&jaddr,ssock,request_queue, stablize_get_successor_list);
+          get_successor_list_send((struct sockaddr *)&jaddr, ssock,
+                                  successor_list->next->key, request_queue,
+                                  stablize_get_successor_list);
         }
         shift_timeval(&next_stabilize_time, args.fix_fingers_period);
         break;
@@ -405,6 +416,7 @@ int main(int argc, char *argv[]) {
           // response
           switch (msg->msg_case) {
           case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
+
             delete_request_by_query_id(request_queue, msg->query_id);
           case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
             OutstandingRequest *k;
@@ -495,19 +507,35 @@ int main(int argc, char *argv[]) {
             delete_request_by_query_id(request_queue, msg->query_id);
             break;
           }
-          case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE:
+          case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
 
-            break;
+            // this is for stabilize succesor list
+            OutstandingRequest *current_request =
+                find_request_by_query_id(request_queue, msg->query_id);
+            GetSuccessorListResponse *rsp = msg->get_successor_list_response;
+            size_t numnode = rsp->n_successors;
+
+            wipe_entry_list(successor_list);
+            Entry tmp;
+
+            tmp.key = current_request->node_id;
+            struct sockaddr_in *successordat = (struct sockaddr_in *)&src_addr;
+
+            tmp.port = successordat->sin_port;
+            tmp.address = successordat->sin_addr.s_addr;
+            push_entry(successor_list, &tmp);
+            for (int i = 0; i < numnode - 1; i++) {
+
+              Entry tmp;
+              tmp.key = rsp->successors[i]->key;
+              tmp.port = rsp->successors[i]->address;
+              tmp.address = rsp->successors[i]->address;
+              push_entry(successor_list, &tmp);
+            }
+          } break;
           case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {
 
-            OutstandingRequest *k;
-            int rq_index = 0;
-            for (k = request_queue->next; k != request_queue; k = k->next) {
-              if (k->query_id == msg->query_id) {
-                break;
-              }
-              rq_index++;
-            }
+            delete_request_by_query_id(request_queue, msg->query_id);
 
             // delete_entry_at_index(Entry *head, int index) pos = 1;
             // free_request(k);
@@ -517,6 +545,7 @@ int main(int argc, char *argv[]) {
             break;
           }
         }
+        free(msg);
       }
     }
   }
