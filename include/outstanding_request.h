@@ -4,6 +4,7 @@
 #include "sys/time.h"
 
 #include "../protobuf/chord.pb-c.h"
+#include "stdint.h"
 
 typedef enum Msg_Type {
   join_find_successor,
@@ -21,9 +22,9 @@ typedef struct OutstandingRequest OutstandingRequest;
 struct OutstandingRequest {
   OutstandingRequest *next;
   OutstandingRequest *prev;
-  int input_id;
+  uint64_t input_id;
   int query_id;
-  int node_id;
+  uint64_t node_id;
   Msg_Type message_type;
   int finger_index; // Only when message_type is fix_finger_find_successor
   struct timeval *start_time;
@@ -39,8 +40,8 @@ construct_outstanding_request(int query_id, Msg_Type message_type,
                               struct sockaddr *dest_addr, int nth);
 
 OutstandingRequest *construct_outstanding_request_with_id(
-    int query_id, Msg_Type message_type, int finger_index, int id, int node_id,
-    ChordMessage *sent_msg, struct sockaddr *dest_addr,
+    int query_id, Msg_Type message_type, int finger_index, uint64_t id,
+    uint64_t node_id, ChordMessage *sent_msg, struct sockaddr *dest_addr,
     int nth_closest_predecessor);
 
 void free_outstanding_request(OutstandingRequest *req);

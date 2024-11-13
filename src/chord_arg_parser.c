@@ -70,7 +70,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
   // --cpp check precedessor period
   case 402: {
     int ts_arg = atoi(arg);
-    if (ts_arg < 1 || ts_arg > 6) {
+    if (ts_arg < 1 || ts_arg > 600) {
       argp_error(state, "Invalid option for a check predecessor period");
     } else {
       args->check_predecessor_period = (uint16_t)ts_arg;
@@ -117,6 +117,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
 }
 
 struct chord_arguments chord_parseopt(int argc, char *argv[]) {
+  printf("we segfault in here\n");
   struct argp_option options[] = {
       {"port", 'p', "port", 0, "The port that is being used at the chord node",
        0},
@@ -145,6 +146,6 @@ struct chord_arguments chord_parseopt(int argc, char *argv[]) {
   }
 
   // TODO: ADDITIONAL ARGUMENT VALIDATION
-
+  printf("we ret\n");
   return args;
 }

@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -151,7 +152,7 @@ Entry *find_entry_at_index(Entry *head, int index) {
   return curr;
 }
 
-Entry *find_entry_by_key(Entry *head, int key) {
+Entry *find_entry_by_key(Entry *head, uint64_t key) {
   Entry *curr = head->next;
   while (curr != head) {
     if (curr->key == key) {

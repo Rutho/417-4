@@ -1,5 +1,7 @@
 #include "../include/outstanding_request.h"
+#include "../include/comms.h"
 #include "../include/time_utils.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 
@@ -29,13 +31,16 @@ construct_outstanding_request(int query_id, Msg_Type message_type,
     memcpy(out_req->dest_addr, dest_addr, sizeof(struct sockaddr));
   }
   get_timeval_now(out_req->start_time);
-  out_req->nth_transmission = 1;
+  // nth should be one
+  out_req->nth_transmission = nth;
   return out_req;
 }
 
-OutstandingRequest *construct_outstanding_request_with_id(
-    int query_id, Msg_Type message_type, int finger_index, int id, int node_id,
-    ChordMessage *sent_msg, struct sockaddr *dest_addr, int nth) {
+OutstandingRequest *
+construct_outstanding_request_with_id(int query_id, Msg_Type message_type,
+                                      int finger_index, uint64_t id,
+                                      uint64_t node_id, ChordMessage *sent_msg,
+                                      struct sockaddr *dest_addr, int nth) {
   OutstandingRequest *out_req = construct_outstanding_request(
       query_id, message_type, finger_index, sent_msg, dest_addr, nth);
   out_req->input_id = id;
@@ -44,7 +49,7 @@ OutstandingRequest *construct_outstanding_request_with_id(
 }
 
 void free_outstanding_request(OutstandingRequest *req) {
-  free(req->sent_message);
+  destroy_msg(req->sent_message);
   free(req->dest_addr);
   free(req);
 }

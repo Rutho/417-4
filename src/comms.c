@@ -56,174 +56,248 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
   return recvd_chord_msg;
 }
 
-ChordMessage construct_msg(ChordMessage__MsgCase cs, int id, int qid,
-                           Entry *optional) {
+ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
+                            Entry *optional) {
   ChordMessage *ret = 0;
 
   switch (cs) {
 
   case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST: {
-    ChordMessage cloak;
-    FindSuccessorRequest rq;
-    find_successor_request__init(&rq);
-    chord_message__init(&cloak);
-    cloak.version = 417;
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    FindSuccessorRequest *rq = malloc(sizeof(FindSuccessorRequest));
+    find_successor_request__init(rq);
+    chord_message__init(cloak);
+    cloak->version = 417;
 
-    cloak.msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST;
-    rq.key = id;
-    cloak.find_successor_request = &rq;
-    cloak.query_id = qid;
+    cloak->msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST;
+    rq->key = id;
+    cloak->find_successor_request = rq;
+    cloak->query_id = qid;
 
-    ret = &cloak;
+    ret = cloak;
 
   } break;
   case CHORD_MESSAGE__MSG_NOTIFY_REQUEST: {
-    ChordMessage cloak;
-    NotifyRequest rq;
-    Node nd;
-    node__init(&nd);
-    notify_request__init(&rq);
-    chord_message__init(&cloak);
-    cloak.version = 417;
-    cloak.msg_case = CHORD_MESSAGE__MSG_NOTIFY_REQUEST;
-    cloak.query_id = qid;
-    nd.key = optional->key;
-    nd.port = optional->port;
-    nd.address = optional->address;
-    cloak.notify_request = &rq;
-    rq.node = &nd;
-    ret = &cloak;
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    NotifyRequest *rq = malloc(sizeof(NotifyRequest));
+    Node *nd = malloc(sizeof(Node));
+    node__init(nd);
+    notify_request__init(rq);
+    chord_message__init(cloak);
+    cloak->version = 417;
+    cloak->msg_case = CHORD_MESSAGE__MSG_NOTIFY_REQUEST;
+    cloak->query_id = qid;
+    nd->key = optional->key;
+    nd->port = optional->port;
+    nd->address = optional->address;
+    cloak->notify_request = rq;
+    rq->node = nd;
+    ret = cloak;
   } break;
   case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {
-    ChordMessage cloak;
-    NotifyResponse rq;
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    NotifyResponse *rq = malloc(sizeof(NotifyResponse));
 
-    notify_response__init(&rq);
-    chord_message__init(&cloak);
-    cloak.version = 417;
-    cloak.msg_case = CHORD_MESSAGE__MSG_NOTIFY_RESPONSE;
-    cloak.query_id = qid;
+    notify_response__init(rq);
+    chord_message__init(cloak);
+    cloak->version = 417;
+    cloak->msg_case = CHORD_MESSAGE__MSG_NOTIFY_RESPONSE;
+    cloak->query_id = qid;
 
-    cloak.notify_response = &rq;
+    cloak->notify_response = rq;
+    ret = cloak;
   } break;
   case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
-    ChordMessage cloak;
-    FindSuccessorResponse rq;
-    Node nd;
-    node__init(&nd);
-    find_successor_response__init(&rq);
-    chord_message__init(&cloak);
-    cloak.version = 417;
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    FindSuccessorResponse *rq = malloc(sizeof(FindSuccessorResponse));
+    Node *nd = malloc(sizeof(Node));
+    node__init(nd);
+    find_successor_response__init(rq);
+    chord_message__init(cloak);
+    cloak->version = 417;
 
-    cloak.msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE;
-    rq.key = id;
-    nd.key = optional->key;
-    nd.port = optional->port;
-    nd.address = optional->address;
-    rq.node = &nd;
-    cloak.find_successor_response = &rq;
-    cloak.query_id = qid;
-    ret = &cloak;
+    cloak->msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE;
+    rq->key = id;
+    nd->key = optional->key;
+    nd->port = optional->port;
+    nd->address = optional->address;
+    rq->node = nd;
+    cloak->find_successor_response = rq;
+    cloak->query_id = qid;
+    ret = cloak;
   } break;
   case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST: {
-    ChordMessage cloak;
-    GetPredecessorRequest rq;
-    get_predecessor_request__init(&rq);
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    GetPredecessorRequest *rq = malloc(sizeof(GetPredecessorRequest));
+    get_predecessor_request__init(rq);
 
-    chord_message__init(&cloak);
-    cloak.version = 417;
+    chord_message__init(cloak);
+    cloak->version = 417;
 
-    cloak.msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
+    cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
 
-    cloak.get_predecessor_request = &rq;
-    cloak.query_id = qid;
-    ret = &cloak;
+    cloak->get_predecessor_request = rq;
+    cloak->query_id = qid;
+    ret = cloak;
   }
 
   break;
   case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE: {
-    ChordMessage cloak;
-    GetPredecessorResponse rq;
-    Node nd;
-    get_predecessor_response__init(&rq);
-    node__init(&nd);
-    chord_message__init(&cloak);
-    cloak.version = 417;
-    nd.key = optional->key;
-    nd.port = optional->port;
-    nd.address = optional->address;
-    cloak.msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE;
-    rq.node = &nd;
-    cloak.get_predecessor_response = &rq;
-    cloak.query_id = qid;
-    ret = &cloak;
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    GetPredecessorResponse *rq = malloc(sizeof(GetPredecessorResponse));
+    Node *nd = malloc(sizeof(Node));
+    get_predecessor_response__init(rq);
+    node__init(nd);
+    chord_message__init(cloak);
+    cloak->version = 417;
+    nd->key = optional->key;
+    nd->port = optional->port;
+    nd->address = optional->address;
+    cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE;
+    rq->node = nd;
+    cloak->get_predecessor_response = rq;
+    cloak->query_id = qid;
+    ret = cloak;
 
   } break;
 
   case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
-    ChordMessage cloak;
-    CheckPredecessorRequest rq;
-    check_predecessor_request__init(&rq);
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    CheckPredecessorRequest *rq = malloc(sizeof(CheckPredecessorRequest));
+    check_predecessor_request__init(rq);
 
-    chord_message__init(&cloak);
-    cloak.version = 417;
+    chord_message__init(cloak);
+    cloak->version = 417;
 
-    cloak.msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
+    cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
 
-    cloak.check_predecessor_request = &rq;
-    cloak.query_id = qid;
-    ret = &cloak;
+    cloak->check_predecessor_request = rq;
+    cloak->query_id = qid;
+    ret = cloak;
 
   } break;
   case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE: {
-    ChordMessage cloak;
-    CheckPredecessorResponse rq;
-    check_predecessor_response__init(&rq);
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    CheckPredecessorResponse *rq = malloc(sizeof(CheckPredecessorResponse));
+    check_predecessor_response__init(rq);
 
-    chord_message__init(&cloak);
-    cloak.version = 417;
+    chord_message__init(cloak);
+    cloak->version = 417;
 
-    cloak.msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
+    cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
 
-    cloak.check_predecessor_response = &rq;
-    cloak.query_id = qid;
-    ret = &cloak;
+    cloak->check_predecessor_response = rq;
+    cloak->query_id = qid;
+    ret = cloak;
   } break;
   case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST: {
-    ChordMessage cloak;
-    chord_message__init(&cloak);
-    GetSuccessorListRequest rq;
-    get_successor_list_request__init(&rq);
-    cloak.msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST;
-    cloak.query_id = qid;
-    cloak.get_successor_list_request = &rq;
-    ret = &cloak;
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    chord_message__init(cloak);
+    GetSuccessorListRequest *rq = malloc(sizeof(GetSuccessorListRequest));
+    get_successor_list_request__init(rq);
+    cloak->msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST;
+    cloak->query_id = qid;
+    cloak->get_successor_list_request = rq;
+    ret = cloak;
 
   } break;
   case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
     // successor_list does not exist need optional argument.
-    Entry *successor_list = successor_list;
-    ChordMessage cloak;
-    GetSuccessorListResponse rsp;
-    chord_message__init(&cloak);
-    get_successor_list_response__init(&rsp);
-    rsp.n_successors = entry_list_size(successor_list);
-    rsp.successors = malloc(sizeof(Entry) * rsp.n_successors);
+
+    Entry *successor_list = optional;
+    ChordMessage *cloak = malloc(sizeof(ChordMessage));
+    GetSuccessorListResponse *rsp = malloc(sizeof(GetSuccessorListResponse));
+    chord_message__init(cloak);
+    get_successor_list_response__init(rsp);
+
+    rsp->n_successors = entry_list_size(successor_list);
+    rsp->successors = malloc(sizeof(Entry) * rsp->n_successors);
     Entry *curr_successor = successor_list->next;
-    for (int i = 0; i < rsp.n_successors; i++) {
-      rsp.successors[i]->key = curr_successor->key;
-      rsp.successors[i]->address = curr_successor->address;
-      rsp.successors[i]->port = curr_successor->port;
+    for (int i = 0; (unsigned)i < rsp->n_successors; i++) {
+      rsp->successors[i]->key = curr_successor->key;
+      rsp->successors[i]->address = curr_successor->address;
+      rsp->successors[i]->port = curr_successor->port;
     }
-    cloak.get_successor_list_response = &rsp;
-    cloak.query_id = qid;
-    cloak.msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE;
-    ret = &cloak;
+    cloak->get_successor_list_response = rsp;
+    cloak->query_id = qid;
+    cloak->msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE;
+    ret = cloak;
   } break;
   default:
     break;
   }
-  return *ret;
+  return ret;
 }
 
+// 0 for correct, -1 for error
+int destroy_msg(ChordMessage *msg) {
+
+  switch (msg->msg_case) {
+
+  case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST: {
+
+    free(msg->find_successor_request);
+    free(msg);
+
+  } break;
+  case CHORD_MESSAGE__MSG_NOTIFY_REQUEST: {
+
+    free(msg->notify_request->node);
+    free(msg->notify_request);
+    free(msg);
+  } break;
+  case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {
+    free(msg->notify_response);
+    free(msg);
+  } break;
+  case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
+    free(msg->find_successor_response->node);
+    free(msg->find_successor_response);
+    free(msg);
+
+  } break;
+  case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST: {
+    free(msg->get_predecessor_request);
+    free(msg);
+  }
+
+  break;
+  case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE: {
+    free(msg->get_predecessor_response);
+    free(msg);
+
+  } break;
+
+  case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
+
+    free(msg->find_successor_request);
+    free(msg);
+
+  } break;
+  case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE: {
+
+    free(msg->check_predecessor_response);
+    free(msg);
+  } break;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST: {
+
+    free(msg->get_successor_list_request);
+
+    free(msg);
+
+  } break;
+  case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
+    // successor_list does not exist need optional argument.
+
+    free(msg->get_successor_list_response->successors);
+    free(msg->get_successor_list_response);
+    free(msg);
+
+  } break;
+  default:
+    break;
+  }
+
+  return 1;
+}
 #endif

@@ -206,6 +206,8 @@ void create_chord_ring(Entry *client, Entry **finger_table,
 int main(int argc, char *argv[]) {
   struct chord_arguments args = chord_parseopt(argc, argv);
 
+  printf("we die?");
+
   // setting up fd set
   fd_set incoming;
   int maxfd;
@@ -216,11 +218,13 @@ int main(int argc, char *argv[]) {
   maxfd = ssock;
   struct sockaddr_in localaddr = args.my_address;
   int bval = bind(ssock, (struct sockaddr *)&localaddr, sizeof(localaddr));
-  // why is this needed
-  // char host_buf[256];
-  // gethostname(host_buf, sizeof(host_buf));
-  // struct hostent *ent = gethostbyname(host_buf);
-  // localaddr.sin_addr.s_addr = ent->h_addr_list[0];
+
+  char host_buf[256];
+  gethostname(host_buf, sizeof(host_buf));
+  struct hostent *ent = gethostbyname(host_buf);
+  struct in_addr **host_ls = NULL;
+  host_ls = (struct in_addr **)ent->h_addr_list;
+  localaddr.sin_addr.s_addr = host_ls[0]->s_addr;
   assert(bval >= 0);
   FD_ZERO(&incoming);
   FD_SET(STDIN, &incoming);
@@ -231,17 +235,28 @@ int main(int argc, char *argv[]) {
   // TODO: setup the node (create/join chord ring, init ring table and successor
   // list, etc)
   // Get id from hash of sum of concatenation of port and address
-  uint8_t *concatenation;
+  //
 
-  concatenate_port_addr((uint8_t *)localaddr.sin_port,
-                        (uint8_t *)localaddr.sin_addr.s_addr, concatenation);
+  // uint8_t *concatenation;
+
+  // concatenate_port_addr((uint8_t *)&localaddr->join_address.sin_port,
+  //                    (uint8_t *)&localaddr->join_address.sin_addr.s_addr,
+  //                  concatenation);
+  // struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
+  // uint8_t extended_key[20];
+  // sha1sum_finish(ctx, concatenation,
+  //            sizeof(localaddr->my_address.sin_addr) +
+  //             sizeof(localaddr->my_address.sin_port),
+  //      extended_key);
+
   struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
+  sha1sum_update(ctx, (void *)&localaddr.sin_port, 6);
   uint8_t extended_key[20];
-  sha1sum_finish(ctx, concatenation,
-                 sizeof(localaddr.sin_addr) + sizeof(localaddr.sin_port),
-                 extended_key);
+  sha1sum_finish(ctx, (void *)&localaddr.sin_addr.s_addr,
+                 sizeof(localaddr.sin_addr.s_addr), extended_key);
   uint64_t key = sha1sum_truncated_head(extended_key);
   sha1sum_reset(ctx);
+  sha1sum_destroy(ctx);
   // No need to explicitly create a new chord ring
   // Since creating a ring requires no additional set up besides initializing
   // these variables
@@ -254,20 +269,28 @@ int main(int argc, char *argv[]) {
 
   // Checks if join address was provided. Not sure if it is actually set to NULL
   // when not provided.
-  if (&args.join_address.sin_addr != 0) {
+  if (argc > 3 && strcmp(argv[4], "ja") == 0) {
 
-    uint8_t *concatenation;
+    // uint8_t *concatenation;
 
-    concatenate_port_addr((uint8_t *)&args.join_address.sin_port,
-                          (uint8_t *)&args.join_address.sin_addr.s_addr,
-                          concatenation);
+    // concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
+    //                    (uint8_t *)&args->join_address.sin_addr.s_addr,
+    //                  concatenation);
+    // struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
+    // uint8_t extended_key[20];
+    // sha1sum_finish(ctx, concatenation,
+    //            sizeof(args->join_address.sin_addr) +
+    //             sizeof(args->join_address.sin_port),
+    //      extended_key);
+
     struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
+    sha1sum_update(ctx, (void *)&args.join_address.sin_port, 6);
     uint8_t extended_key[20];
-    sha1sum_finish(ctx, concatenation,
-                   sizeof(localaddr.sin_addr) + sizeof(localaddr.sin_port),
-                   extended_key);
+    sha1sum_finish(ctx, (void *)&args.join_address.sin_addr.s_addr,
+                   sizeof(args.join_address.sin_addr.s_addr), extended_key);
     uint64_t newk = sha1sum_truncated_head(extended_key);
     sha1sum_reset(ctx);
+    sha1sum_destroy(ctx);
     join_chord_ring_send(client, key, newk,
                          (struct sockaddr *)&args.join_address, ssock,
                          request_queue, 1);
@@ -459,10 +482,10 @@ int main(int argc, char *argv[]) {
         // cases to handle requests
         switch (msg->msg_case) {
         case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
-          ChordMessage msg_send =
+          ChordMessage *msg_send =
               construct_msg(CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE, -1,
                             msg->query_id, client);
-          send_message(&msg_send, ssock, &src_addr);
+          send_message(msg_send, ssock, &src_addr);
         } break;
         case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
           // Might need a separate Msg_Type for the case where find_successor
@@ -481,17 +504,17 @@ int main(int argc, char *argv[]) {
               will_send = find_closest_predecessor_entry(finger_table, req_key);
             }
 
-            ChordMessage sending =
+            ChordMessage *sending =
                 construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE,
                               req_key, msg->query_id, NULL);
-            send_message(&sending, ssock, &src_addr);
+            send_message(sending, ssock, &src_addr);
           }
           break;
         case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST: {
-          ChordMessage msg_send =
+          ChordMessage *msg_send =
               construct_msg(CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE, -1,
                             msg->query_id, predecessor);
-          send_message(&msg_send, ssock, &src_addr);
+          send_message(msg_send, ssock, &src_addr);
         } break;
 
         case CHORD_MESSAGE__MSG_NOTIFY_REQUEST: {
@@ -506,16 +529,16 @@ int main(int argc, char *argv[]) {
             Entry *newpred = init_entry(tmp->key, (struct sockaddr *)&temp);
             predecessor = newpred;
           }
-          ChordMessage sending = construct_msg(
+          ChordMessage *sending = construct_msg(
               CHORD_MESSAGE__MSG_NOTIFY_RESPONSE, -1, msg->query_id, NULL);
-          send_message(&sending, ssock, &src_addr);
+          send_message(sending, ssock, &src_addr);
         } break;
 
         case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_REQUEST: {
-          ChordMessage msg_send =
+          ChordMessage *msg_send =
               construct_msg(CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE, -1,
                             msg->query_id, successor_list);
-          send_message(&msg_send, ssock, &src_addr);
+          send_message(msg_send, ssock, &src_addr);
         } break;
         // message is not a request, must be a response
         default:
@@ -524,16 +547,11 @@ int main(int argc, char *argv[]) {
           switch (msg->msg_case) {
           case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE:
             delete_request_by_query_id(request_queue, msg->query_id);
+            break;
           case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
-            OutstandingRequest *k;
-            int rq_index = 0;
-            for (k = request_queue->next; k != request_queue; k = k->next) {
-              if (k->query_id == msg->query_id) {
+            OutstandingRequest *k =
+                find_request_by_query_id(request_queue, msg->query_id);
 
-                break;
-              }
-              rq_index++;
-            }
             struct FindSuccessorResponse *ls = msg->find_successor_response;
 
             Node *g_pred = ls->node;
@@ -543,7 +561,7 @@ int main(int argc, char *argv[]) {
             // we have not found the successor and need to send further
             if (!(is_between_inclusive(lower, mid, higher))) {
               int qid = generate_query_id();
-              ChordMessage msg =
+              ChordMessage *msg =
                   construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
                                 k->input_id, qid, NULL);
 
@@ -551,11 +569,14 @@ int main(int argc, char *argv[]) {
               tmp.sin_port = htonl(g_pred->port);
               tmp.sin_addr.s_addr = htonl(g_pred->address);
               tmp.sin_family = AF_INET;
-              send_message(&msg, ssock, (struct sockaddr *)&tmp);
+              send_message(msg, ssock, (struct sockaddr *)&tmp);
               OutstandingRequest *new_req =
                   construct_outstanding_request_with_id(
                       qid, k->message_type, k->finger_index, k->input_id,
-                      higher, &msg, (struct sockaddr *)&tmp, 1);
+                      higher, msg, (struct sockaddr *)&tmp, 1);
+
+              delete_request_by_query_id(request_queue, msg->query_id);
+              push_request(request_queue, new_req);
               // push_entry(request_queue,new_req);
               // delete_entry_at_index(request_queue,rq_index);
               // free_request(k);
@@ -577,6 +598,7 @@ int main(int argc, char *argv[]) {
               } break;
               case (join_find_successor): {
                 push_entry(finger_table, pred);
+                break;
               }
               case (user_lookup): {
 
@@ -589,6 +611,7 @@ int main(int argc, char *argv[]) {
               default:
                 break;
               }
+              delete_request_by_query_id(request_queue, k->query_id);
             }
 
             break;
@@ -630,7 +653,7 @@ int main(int argc, char *argv[]) {
             tmp.port = successordat->sin_port;
             tmp.address = successordat->sin_addr.s_addr;
             push_entry(successor_list, &tmp);
-            for (int i = 0; i < numnode - 1; i++) {
+            for (int i = 0; (unsigned)i < numnode - 1; i++) {
 
               Entry tmp;
               tmp.key = rsp->successors[i]->key;
@@ -638,6 +661,7 @@ int main(int argc, char *argv[]) {
               tmp.address = rsp->successors[i]->address;
               push_entry(successor_list, &tmp);
             }
+            delete_request_by_query_id(request_queue, msg->query_id);
           } break;
           case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {
 
