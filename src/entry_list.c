@@ -106,6 +106,26 @@ int delete_entry_at_index(Entry *head, int index) {
 
   return 1;
 }
+
+// Removes all entries with the given key
+// Returns 1 if we deleted something (an entry with that key existed).
+// Otherwise, return 0
+int delete_entries_by_key(Entry *head, uint64_t key) {
+  Entry *curr = head->next;
+  int deleted_smth = 0;
+  while (curr != head) {
+    if (curr->key == key) {
+      curr->prev->next = curr->next;
+      curr->next->prev = curr->prev;
+      free(curr);
+      deleted_smth = 1;
+    }
+    curr = curr->next;
+  }
+
+  return deleted_smth;
+}
+
 void wipe_entry_list(Entry *head) {
 
   Entry *curr = head->next;

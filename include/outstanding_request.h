@@ -30,17 +30,19 @@ struct OutstandingRequest {
   int nth_transmission; // 1 if original transmission, +1 if retransmission
   ChordMessage *sent_message;
   struct sockaddr *dest_addr;
+  int nth_closest_predecessor;
 };
 
 OutstandingRequest *construct_outstanding_request(int query_id,
                                                   Msg_Type message_type,
                                                   int finger_index,
                                                   ChordMessage *sent_msg,
-                                                  struct sockaddr *dest_addr);
+                                                  struct sockaddr *dest_addr,
+                                                  int nth_closest_predecessor);
 
 OutstandingRequest *construct_outstanding_request_with_id(
     int query_id, Msg_Type message_type, int finger_index, int id, int node_id,
-    ChordMessage *sent_msg, struct sockaddr *dest_addr);
+    ChordMessage *sent_msg, struct sockaddr *dest_addr, int nth_closest_predecessor);
 
 void free_outstanding_request(OutstandingRequest *req);
 
