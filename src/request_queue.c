@@ -4,14 +4,14 @@
 
 #include "../include/outstanding_request.h"
 #include "../include/queue.h"
-
+#include "../include/request_queue.h"
 OutstandingRequest *init_queue() {
   OutstandingRequest *queue;
   InitDQ(queue, OutstandingRequest);
   return queue;
 }
 
-OutstandingRequest *request_queue_size(OutstandingRequest *queue) {
+int request_queue_size(OutstandingRequest *queue) {
   OutstandingRequest *curr_req = queue->next;
   int count = 0;
   while (curr_req != queue) {
@@ -41,7 +41,7 @@ OutstandingRequest *add_request(OutstandingRequest *queue, int index,
   if (index > request_queue_size(queue)) {
     return push_request(queue, req);
   }
-  if (index > entry_list_size(queue)) {
+  if (index > request_queue_size(queue)) {
     return NULL;
   }
   OutstandingRequest *curr_req = queue->next;
@@ -73,7 +73,7 @@ OutstandingRequest *find_request_by_query_id(OutstandingRequest *queue,
 // Do NOT use this for local requests (query_id of all local requests are -1)
 void delete_request_by_query_id(OutstandingRequest *queue, int query_id) {
   OutstandingRequest *req = find_request_by_query_id(queue, query_id);
-  delete_req(queue, req);
+  delete_request(queue, req);
 }
 
 void delete_request(OutstandingRequest *queue, OutstandingRequest *req) {

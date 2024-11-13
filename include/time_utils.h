@@ -13,7 +13,7 @@ void secs_to_timeval(double time_secs, struct timeval *time);
 
 double get_time_diff_secs(struct timeval *time1, struct timeval *time2);
 
-double get_time_diff_secs_now(struct timeval *time1);
+double get_time_diff_now_secs(struct timeval *time1);
 
 void get_future_timestamp(struct timeval *time, double secs);
 

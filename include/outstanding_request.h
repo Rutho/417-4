@@ -33,16 +33,15 @@ struct OutstandingRequest {
   int nth_closest_predecessor;
 };
 
-OutstandingRequest *construct_outstanding_request(int query_id,
-                                                  Msg_Type message_type,
-                                                  int finger_index,
-                                                  ChordMessage *sent_msg,
-                                                  struct sockaddr *dest_addr,
-                                                  int nth_closest_predecessor);
+OutstandingRequest *
+construct_outstanding_request(int query_id, Msg_Type message_type,
+                              int finger_index, ChordMessage *sent_msg,
+                              struct sockaddr *dest_addr, int nth);
 
 OutstandingRequest *construct_outstanding_request_with_id(
     int query_id, Msg_Type message_type, int finger_index, int id, int node_id,
-    ChordMessage *sent_msg, struct sockaddr *dest_addr, int nth_closest_predecessor);
+    ChordMessage *sent_msg, struct sockaddr *dest_addr,
+    int nth_closest_predecessor);
 
 void free_outstanding_request(OutstandingRequest *req);
 

@@ -91,13 +91,21 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
 
     // --id, -i
   case 'i': {
-    char err[64] = "not modified";
+    /*char err[64] = "not modified";
     int i = (uint64_t)strtoull(arg, err, 10);
     if (strcmp(err, "not modified") != 0) {
       argp_error(state, "Invalid ID");
     } else {
       args->id = (uint64_t)strtoull(arg, NULL, 10);
     }
+      */
+
+    if (0 /*string is an invalid identification*/) {
+      argp_error(state, "Invalid ID");
+    } else {
+      args->id = (uint64_t)strtoull(arg, NULL, 10);
+    }
+
     break;
   }
 

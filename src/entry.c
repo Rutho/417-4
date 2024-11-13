@@ -14,7 +14,8 @@
 
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
                     Entry *successor_list, OutstandingRequest *request_queue,
-                    enum Msg_Type M, int index, int sock, int nth_closest_predecessor) {
+                    enum Msg_Type M, int index, int sock,
+                    int nth_closest_predecessor) {
 
   Entry *ret = 0;
 
@@ -34,7 +35,8 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
   } else {
     Entry *preced;
-    preced = closest_preceding_node(client, id, finger_list, successor_list, nth_closest_predecessor);
+    preced = closest_preceding_node(client, id, finger_list, successor_list,
+                                    nth_closest_predecessor);
     struct sockaddr_in tmp;
     struct in_addr fa;
     tmp.sin_addr.s_addr = preced->address;
@@ -43,17 +45,17 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
     case join_find_successor: {
       join_chord_ring_send(&client, id, preced->key, (struct sockaddr *)&tmp,
-                           sock, request_queue);
+                           sock, request_queue, 1);
 
     } break;
     case fix_fingers_find_successor: {
       fix_finger_find_successor_request_send(&client, id, preced->key,
                                              (struct sockaddr *)&tmp, sock,
-                                             request_queue, index);
+                                             request_queue, index, 1);
     } break;
     case user_lookup: {
       user_lookup_send(&client, id, preced->key, (struct sockaddr *)&tmp, sock,
-                       request_queue);
+                       request_queue, 1);
     }
     default:
       break;
@@ -62,7 +64,8 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 }
 
 Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
-                              Entry *successor_list, int nth_closest_predecessor) {
+                              Entry *successor_list,
+                              int nth_closest_predecessor) {
 
   Entry *ret = &client;
   Entry *k;
@@ -71,7 +74,8 @@ Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
   for (int i = 0; i < nth_closest_predecessor; i++) {
     for (k = finger_list->next; k != finger_list; k = k->next) {
 
-      if (is_between_exclusive(lower, k->key, upper) && is_between_exclusive(lower, k->key, ret)) {
+      if (is_between_exclusive(lower, k->key, upper) &&
+          is_between_exclusive(lower, k->key, ret->key)) {
         ret = k;
         break;
       }
@@ -79,14 +83,16 @@ Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
     Entry *j;
     for (j = successor_list->next; j != successor_list; j = j->next) {
 
-      if (is_between_exclusive(lower, j->key, upper) && is_between_exclusive(lower, j->key, ret)) {
+      if (is_between_exclusive(lower, j->key, upper) &&
+          is_between_exclusive(lower, j->key, ret->key)) {
         ret = j;
         break;
       }
     }
-    upper = ret;
+    upper = ret->key;
   }
 
+  return ret;
 }
 
 Entry *init_entry(uint64_t key, struct sockaddr *address) {
@@ -122,27 +128,26 @@ void send_notif(Entry *client, int id, int rev_id, struct sockaddr *join_addr,
 // i am doing iterative so we send out requests for finger lists;;.
 void join_chord_ring_send(Entry *client, int id, int rev_id,
                           struct sockaddr *join_addr, int sock,
-                          OutstandingRequest *request_queue, int nth_closest_predecessor) {
+                          OutstandingRequest *request_queue,
+                          int nth_closest_predecessor) {
   ChordMessage msg = construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
                                    client->key, generate_query_id(), NULL);
   int query_id = send_message(&msg, sock, join_addr);
   OutstandingRequest *new_req = construct_outstanding_request_with_id(
-      query_id, join_find_successor, -1, id, rev_id, 
-      &msg, join_addr, nth_closest_predecessor);
+      query_id, join_find_successor, -1, id, rev_id, &msg, join_addr,
+      nth_closest_predecessor);
   push_request(request_queue, new_req);
 }
 
-void fix_finger_find_successor_request_send(Entry *client, int id, int rev_id,
-                                            struct sockaddr *join_addr,
-                                            int sock,
-                                            OutstandingRequest *request_queue,
-                                            int index, int nth_closest_predecessor) {
+void fix_finger_find_successor_request_send(
+    Entry *client, int id, int rev_id, struct sockaddr *join_addr, int sock,
+    OutstandingRequest *request_queue, int index, int nth_closest_predecessor) {
   ChordMessage msg = construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
                                    id, generate_query_id(), NULL);
   int query_id = send_message(&msg, sock, join_addr);
   OutstandingRequest *new_req = construct_outstanding_request_with_id(
-      query_id, fix_fingers_find_successor, index, id, rev_id, 
-      &msg, join_addr, nth_closest_predecessor);
+      query_id, fix_fingers_find_successor, index, id, rev_id, &msg, join_addr,
+      nth_closest_predecessor);
   push_request(request_queue, new_req);
 }
 
@@ -174,8 +179,8 @@ void get_predecessor_send(uint64_t id, struct sockaddr *dest_addr, int sock,
   ChordMessage msg = construct_msg(CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST,
                                    id, generate_query_id(), NULL);
   int query_id = send_message(&msg, sock, dest_addr);
-  OutstandingRequest *new_req =
-      construct_outstanding_request(query_id, M, finger_index, &msg, dest_addr, 1);
+  OutstandingRequest *new_req = construct_outstanding_request(
+      query_id, M, finger_index, &msg, dest_addr, 1);
   push_request(request_queue, new_req);
 }
 

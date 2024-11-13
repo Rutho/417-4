@@ -5,7 +5,7 @@
 #include "../protobuf/chord.pb-c.h"
 
 // Length of a Chord Node or item key
-const uint8_t KEY_LEN = 8;
+// const uint8_t KEY_LEN = 8;
 
 typedef enum PeriodicUpdateFlag {
   CHECK_PREDECESSOR = 1,

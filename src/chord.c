@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <endian.h>
 #include <math.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -18,19 +19,22 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <netdb.h>
 
 /**
  * Hanging Questions:
- * - If join fails at an intermediate node (a node other than the "join" node), do we just transmit indefinitely?
- *   Or create our own ring?
- * - If we detect a node failure because a request timeouts, what should we do about the other requests that were sent to the failed node
- * - If the same node appears in the finger table and/or successor list  more than once and is the best predecessor of a key, 
- *   does it count as both the first, second, ..., nth best predecessor or just the first best predecessor?
- * - Should retransmissions be calling the {request}_send functions or just retransmitting the same exact message to the same receiver?
- *   The difference is that if we call {request}_send function, the message content/receiver may be different due to updated state
- *   since previous transmission
- * - How long should we wait before sending requests to next best predecessor after determining a node has failed
+ * - If join fails at an intermediate node (a node other than the "join" node),
+ * do we just transmit indefinitely? Or create our own ring?
+ * - If we detect a node failure because a request timeouts, what should we do
+ * about the other requests that were sent to the failed node
+ * - If the same node appears in the finger table and/or successor list  more
+ * than once and is the best predecessor of a key, does it count as both the
+ * first, second, ..., nth best predecessor or just the first best predecessor?
+ * - Should retransmissions be calling the {request}_send functions or just
+ * retransmitting the same exact message to the same receiver? The difference is
+ * that if we call {request}_send function, the message content/receiver may be
+ * different due to updated state since previous transmission
+ * - How long should we wait before sending requests to next best predecessor
+ * after determining a node has failed
  */
 
 #define STDIN 0
@@ -63,7 +67,7 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
     action_flag = STABILIZE;
   }
 
-  double time_to_next_action = get_time_diff_secs_now(next_action_timeval);
+  double time_to_next_action = get_time_diff_now_secs(next_action_timeval);
   if (time_to_next_action < 0) {
     timeout->tv_sec = 0;
     timeout->tv_usec = 0;
@@ -85,7 +89,7 @@ int request_timed_out(OutstandingRequest *req, double retransmission_timeout,
   if (req->query_id == -1) {
     return 0;
   }
-  if (get_time_diff_secs_now(req) >= retransmission_timeout) {
+  if (get_time_diff_now_secs(req->start_time) >= retransmission_timeout) {
     if (req->nth_transmission >= n_transmissions) {
       return 2;
     } else {
@@ -101,79 +105,93 @@ void retransmit_request(OutstandingRequest *req, int sock) {
   req->nth_transmission++;
 }
 
-//TODO: if this node is in finger table/successor list, we remove it.
-//But if we do, what values should we replace it with (push everything down one to fix gap for succ list?)
-//What about finger list? let fix_fingers eventually fill the gap?
-void handle_node_failure(int sock, Entry *client, OutstandingRequest *req, 
-                    Entry *finger_table, Entry *successor_list, Entry **predecessor, struct chord_arguments *args,
-                    OutstandingRequest *request_queue) {
-      uint8_t *concatenation;
+// TODO: if this node is in finger table/successor list, we remove it.
+// But if we do, what values should we replace it with (push everything down one
+// to fix gap for succ list?) What about finger list? let fix_fingers eventually
+// fill the gap?
+void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
+                         Entry *finger_table, Entry *successor_list,
+                         Entry **predecessor, struct chord_arguments *args,
+                         OutstandingRequest *request_queue) {
+  uint8_t *concatenation;
 
-    concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
-                          (uint8_t *)&args->join_address.sin_addr.s_addr,
-                          concatenation);
-    struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-    uint8_t extended_key[20];
-    sha1sum_finish(ctx, concatenation,
-                   sizeof(args->my_address.sin_addr) + sizeof(args->my_address.sin_port),
-                   extended_key);
+  concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
+                        (uint8_t *)&args->join_address.sin_addr.s_addr,
+                        concatenation);
+  struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
+  uint8_t extended_key[20];
+  sha1sum_finish(ctx, concatenation,
+                 sizeof(args->my_address.sin_addr) +
+                     sizeof(args->my_address.sin_port),
+                 extended_key);
   uint64_t newk = sha1sum_truncated_head(extended_key);
   sha1sum_reset(ctx);
 
-  //If we delete something, we know that the best predecessors has
-  //shifted once. For example, the 2nd best predecessor is now best predecessor if we deleted
-  //the best predecessor. If we don't delete anything, we know we have to now find the next best
-  //predecessor (e.g instead of best predecessor, we send to next (2nd) best predecessor).
-  //e.g. node n sends find_successor_request to predecessor p, where p is in our successor/finger list. 
-  //p doesn't respond and is determined to have failed after not responding to any (re)transmissions.
-  //We remove any instances of it in the lists, and what was once the 2nd best predecessor p_2 is now 
-  //the best predecessor, so we send to our best predecessor (x = 1). 
-  //e.g. node n sends find_successor_request to predecessor f, which we received from a response to 
-  //the previous find_successor_request from best local predecessor p (local = best predecessor in n's lists). 
-  //f is not in either the successor nor finger list. If we determine
-  //f fails after not responding to re(transmissions), we don't want to send another find_successor_request to the best
-  //local predecessor p since there is a problem with its node path currently, so we find the 2nd best local predecessor
-  if (delete_entries_by_key(finger_table, req->node_id) || 
+  // If we delete something, we know that the best predecessors has
+  // shifted once. For example, the 2nd best predecessor is now best predecessor
+  // if we deleted the best predecessor. If we don't delete anything, we know we
+  // have to now find the next best predecessor (e.g instead of best
+  // predecessor, we send to next (2nd) best predecessor). e.g. node n sends
+  // find_successor_request to predecessor p, where p is in our successor/finger
+  // list. p doesn't respond and is determined to have failed after not
+  // responding to any (re)transmissions. We remove any instances of it in the
+  // lists, and what was once the 2nd best predecessor p_2 is now the best
+  // predecessor, so we send to our best predecessor (x = 1). e.g. node n sends
+  // find_successor_request to predecessor f, which we received from a response
+  // to the previous find_successor_request from best local predecessor p (local
+  // = best predecessor in n's lists). f is not in either the successor nor
+  // finger list. If we determine f fails after not responding to
+  // re(transmissions), we don't want to send another find_successor_request to
+  // the best local predecessor p since there is a problem with its node path
+  // currently, so we find the 2nd best local predecessor
+  if (delete_entries_by_key(finger_table, req->node_id) ||
       delete_entries_by_key(successor_list, req->node_id)) {
-    req->nth_closest_predecessor;
+    // req->nth_closest_predecessor;
   } else {
-    //I'm assuming the join node will never be in the finger table or successor list before
-    //the join response is received
+    // I'm assuming the join node will never be in the finger table or successor
+    // list before the join response is received
     req->nth_closest_predecessor++;
   }
   switch (req->message_type) {
-    
-    case join_find_successor:
-      //Node associated with join address failed, meaning we revert to creating our own chord ring
-      if (req->node_id == newk) {
-        break;
-      //The failed request was an intermediate find_successor_request, so initial node we sent to
-      //isn't the failed node
-      } else {
-        find_successor(*client, req->input_id, finger_table, successor_list, request_queue, 
-                      join_find_successor, req->finger_index, sock, req->nth_closest_predecessor);
-      }
+
+  case join_find_successor:
+    // Node associated with join address failed, meaning we revert to creating
+    // our own chord ring
+    if (req->node_id == newk) {
       break;
-    case fix_fingers_find_successor:
-      find_successor(*client, req->input_id, finger_table, successor_list, request_queue, 
-                    fix_fingers_find_successor, req->finger_index, sock, req->nth_closest_predecessor);
-      break;
-    case stabilize_get_predecessor:
-      //Nothing to be done.
-      //We've already removed it from the successor list and finger table right before this switch statement
-      break;
-    case user_lookup:
-      find_successor(*client, req->input_id, finger_table, successor_list, request_queue, 
-                    user_lookup, req->finger_index, sock, req->nth_closest_predecessor);
-      break;
-    case check_pred:
-      break;
-    case notify_send:
-      //TODO: Is it possible that new successor failed? Maybe do some more things here other than removing
-      //from the successor list and finger table.
-      break;
-    case get_pred:
-      break;
+      // The failed request was an intermediate find_successor_request, so
+      // initial node we sent to isn't the failed node
+    } else {
+      find_successor(*client, req->input_id, finger_table, successor_list,
+                     request_queue, join_find_successor, req->finger_index,
+                     sock, req->nth_closest_predecessor);
+    }
+    break;
+  case fix_fingers_find_successor:
+    find_successor(*client, req->input_id, finger_table, successor_list,
+                   request_queue, fix_fingers_find_successor, req->finger_index,
+                   sock, req->nth_closest_predecessor);
+    break;
+  case stabilize_get_predecessor:
+    // Nothing to be done.
+    // We've already removed it from the successor list and finger table right
+    // before this switch statement
+    break;
+  case user_lookup:
+    find_successor(*client, req->input_id, finger_table, successor_list,
+                   request_queue, user_lookup, req->finger_index, sock,
+                   req->nth_closest_predecessor);
+    break;
+  case check_pred:
+    break;
+  case notify_send:
+    // TODO: Is it possible that new successor failed? Maybe do some more things
+    // here other than removing from the successor list and finger table.
+    break;
+  case get_pred:
+    break;
+  default:
+    break;
   }
 }
 
@@ -198,10 +216,11 @@ int main(int argc, char *argv[]) {
   maxfd = ssock;
   struct sockaddr_in localaddr = args.my_address;
   int bval = bind(ssock, (struct sockaddr *)&localaddr, sizeof(localaddr));
-  char host_buf[256];
-  gethostname(host_buf, sizeof(host_buf));
-  struct hostent *ent = gethostbyname(host_buf);
-  localaddr.sin_addr.s_addr = ent->h_addr_list[0];
+  // why is this needed
+  // char host_buf[256];
+  // gethostname(host_buf, sizeof(host_buf));
+  // struct hostent *ent = gethostbyname(host_buf);
+  // localaddr.sin_addr.s_addr = ent->h_addr_list[0];
   assert(bval >= 0);
   FD_ZERO(&incoming);
   FD_SET(STDIN, &incoming);
@@ -320,8 +339,8 @@ int main(int argc, char *argv[]) {
         break;
       // Timed out and out of retransmission attempts
       case 2:
-        handle_node_failure(ssock, client, curr_req, finger_table, successor_list,
-                            &predecessor, &args, request_queue);
+        handle_node_failure(ssock, client, curr_req, finger_table,
+                            successor_list, &predecessor, &args, request_queue);
         break;
       }
       curr_req = curr_req->next;

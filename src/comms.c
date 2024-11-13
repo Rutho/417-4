@@ -14,8 +14,8 @@
 
 #include "../include/chord.h"
 #include "../include/comms.h"
+#include "../include/entry.h"
 #include "../include/entry_list.h"
-#include "entry.h"
 
 int generate_query_id() { return rand(); }
 
