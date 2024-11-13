@@ -23,12 +23,12 @@ int generate_query_id() { return rand(); }
 int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   // only used to determine size of the 'len' field
   Message msg;
-
+  
   size_t chord_msg_len = chord_message__get_packed_size(chord_msg);
   size_t buf_size = sizeof(msg.len) + chord_msg_len;
   void *msg_buf = malloc(buf_size);
 
-  // I'm settstruct sockaddr_in address;ing msg.len = chord_msg_len (so excludes
+  // I set struct sockaddr_in address;ing msg.len = chord_msg_len (so excludes
   // the size of the len field itself)
   memcpy(msg_buf, &chord_msg_len, sizeof(msg.len));
   chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
@@ -51,9 +51,9 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
   recvfrom(sock, msg.ChordMessage, msg.len, 0, info, &len);
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg.len, msg.ChordMessage);
-
-  free(msg.ChordMessage);
-  return recvd_chord_msg;
+  memcpy(msg.ChordMessage, recvd_chord_msg, msg.len);
+  
+  return msg.ChordMessage;
 }
 
 ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,

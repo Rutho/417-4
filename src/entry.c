@@ -45,17 +45,30 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
     case join_find_successor: {
       join_chord_ring_send(&client, id, preced->key, (struct sockaddr *)&tmp,
+<<<<<<< HEAD
                            sock, request_queue, 1);
+=======
+                           sock, request_queue, nth_closest_predecessor);
+>>>>>>> 76e4d47 (misc)
 
     } break;
     case fix_fingers_find_successor: {
       fix_finger_find_successor_request_send(&client, id, preced->key,
                                              (struct sockaddr *)&tmp, sock,
+<<<<<<< HEAD
                                              request_queue, index, 1);
     } break;
     case user_lookup: {
       user_lookup_send(&client, id, preced->key, (struct sockaddr *)&tmp, sock,
                        request_queue, 1);
+=======
+                                             request_queue, index,
+                                             nth_closest_predecessor);
+    } break;
+    case user_lookup: {
+      user_lookup_send(&client, id, preced->key, (struct sockaddr *)&tmp, sock,
+                       request_queue, nth_closest_predecessor);
+>>>>>>> 76e4d47 (misc)
     }
     default:
       break;
