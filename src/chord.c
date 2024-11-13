@@ -18,6 +18,8 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <netdb.h>
+
 #define STDIN 0
 #define MAX_BYTES 50
 #define RETRANSMIT_TIMEOUT_SECS 10
@@ -86,11 +88,45 @@ void retransmit_request(OutstandingRequest *req, int sock) {
   req->nth_transmission++;
 }
 
-// TODO: if this node is in finger table/successor list, we remove it.
-// But if we do, what values should we replace it with (push everything down one
-// to fix gap for succ list?) What about finger list? let fix_fingers eventually
-// fill the gap?
-void handle_node_failure(OutstandingRequest *req) {}
+//TODO: if this node is in finger table/successor list, we remove it.
+//But if we do, what values should we replace it with (push everything down one to fix gap for succ list?)
+//What about finger list? let fix_fingers eventually fill the gap?
+void handle_node_failure(int sock, Entry *client, OutstandingRequest *req, 
+                    Entry *finger_table, Entry *successor_list, Entry **predecessor, struct chord_arguments *args,
+                    OutstandingRequest *request_queue) {
+      uint8_t *concatenation;
+
+    concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
+                          (uint8_t *)&args->join_address.sin_addr.s_addr,
+                          concatenation);
+    struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
+    uint8_t extended_key[20];
+    sha1sum_finish(ctx, concatenation,
+                   sizeof(args->my_address.sin_addr) + sizeof(args->my_address.sin_port),
+                   extended_key);
+  uint64_t newk = sha1sum_truncated_head(extended_key);
+  sha1sum_reset(ctx);
+  switch (req->message_type) {
+    case join_find_successor:
+      //Node associated with join address failed, meaning we revert to creating our own chord ring
+      if (req->node_id == newk) {
+        break;
+      //The failed request was an intermediate find_successor_request, so initial node we sent to
+      //isn't the failed node
+      } else {
+        join_chord_ring_send(client, client->key, newk, (struct sockaddr *)&args->join_address, sock, request_queue);
+      }
+      break;
+    case fix_fingers_find_successor:
+      
+    case local_fix_fingers_find_successor:
+    case stabilize_get_predecessor:
+    case user_lookup:
+    case check_pred:
+    case notify_send:
+    case get_pred:
+  }
+}
 
 // Creates a new chord ring. Initializes finger table and successor list values
 // to the client itself
@@ -113,6 +149,10 @@ int main(int argc, char *argv[]) {
   maxfd = ssock;
   struct sockaddr_in localaddr = args.my_address;
   int bval = bind(ssock, (struct sockaddr *)&localaddr, sizeof(localaddr));
+  char host_buf[256];
+  gethostname(host_buf, sizeof(host_buf));
+  struct hostent *ent = gethostbyname(host_buf);
+  localaddr.sin_addr.s_addr = ent->h_addr_list[0];
   assert(bval >= 0);
   FD_ZERO(&incoming);
   FD_SET(STDIN, &incoming);

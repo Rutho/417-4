@@ -14,7 +14,7 @@
 
 void find_successor(Entry client, uint64_t id, Entry *finger_list,
                     Entry *successor_list, OutstandingRequest *request_queue,
-                    enum Msg_Type M, int index, int sock) {
+                    enum Msg_Type M, int index, int sock, int nth_closest_predecessor) {
 
   Entry *ret = 0;
 
@@ -62,7 +62,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 }
 
 Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
-                              Entry *successor_list) {
+                              Entry *successor_list, int nth_closest_predecessor) {
 
   Entry *ret = &client;
   Entry *k;
