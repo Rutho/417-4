@@ -31,8 +31,12 @@ construct_outstanding_request(int query_id, Msg_Type message_type,
     out_req->dest_addr = (struct sockaddr *)malloc(sizeof(struct sockaddr));
     memcpy(out_req->dest_addr, dest_addr, sizeof(struct sockaddr));
   }
+<<<<<<< HEAD
   // not declared?
   get_timeval_now(&(out_req->start_time));
+=======
+  get_timeval_now(&out_req->start_time);
+>>>>>>> 4f85d2d (fix compiler warnings)
   // nth should be one
 
   out_req->nth_transmission = nth;

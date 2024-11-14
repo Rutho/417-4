@@ -129,7 +129,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     ChordMessage *cloak = malloc(sizeof(ChordMessage));
     GetPredecessorRequest *rq = malloc(sizeof(GetPredecessorRequest));
     get_predecessor_request__init(rq);
-
+    
     chord_message__init(cloak);
     cloak->version = 417;
 
