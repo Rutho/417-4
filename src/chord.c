@@ -601,7 +601,8 @@ int main(int argc, char *argv[]) {
 
             ChordMessage *sending =
                 construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE,
-                              req_key, msg->query_id, NULL);
+                              req_key, msg->query_id, will_send);
+
             send_message(sending, ssock, &src_addr);
           }
           break;

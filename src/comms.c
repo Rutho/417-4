@@ -28,7 +28,7 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   size_t buf_size = sizeof(uint64_t) + chord_msg_len;
   void *msg_buf = malloc(buf_size);
   printf("WHAT IS THE SIZE OF WHAT I SEND  %lu\n", chord_msg_len);
-
+  chord_msg_len = htobe64(chord_msg_len);
   // I set struct sockaddr_in address;ing msg.len = chord_msg_len (so excludes
   // the size of the len field itself)
   memcpy(msg_buf, &chord_msg_len, sizeof(uint64_t));
@@ -47,12 +47,13 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
 
   recvfrom(sock, &msg_size, sizeof(msg_size), MSG_PEEK, info, &len);
   printf("THE SIZE OF WHAT IS RECIVED %lu\n", msg_size);
+  msg_size = be64toh(msg_size);
   void *buffr = malloc(msg_size + sizeof(uint64_t));
   recvfrom(sock, buffr, msg_size, 0, info, &len);
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));
   printf("%d\n", recvd_chord_msg->query_id);
-
+  free(buffr);
   return recvd_chord_msg;
 }
 
