@@ -45,11 +45,12 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
   uint64_t msg_size;
   socklen_t len = sizeof(struct sockaddr_in);
 
-  recvfrom(sock, &msg_size, sizeof(msg_size), 0, info, &len);
+  recvfrom(sock, &msg_size, sizeof(msg_size), MSG_PEEK, info, &len);
   printf("THE SIZE OF WHAT IS RECIVED %lu\n", msg_size);
-  void *buffr = malloc(msg_size);
+  void *buffr = malloc(msg_size + sizeof(uint64_t));
   recvfrom(sock, buffr, msg_size, 0, info, &len);
-  ChordMessage *recvd_chord_msg = chord_message__unpack(NULL, msg_size, buffr);
+  ChordMessage *recvd_chord_msg =
+      chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));
   printf("%d\n", recvd_chord_msg->query_id);
 
   return recvd_chord_msg;
