@@ -23,7 +23,7 @@ int generate_query_id() { return rand(); }
 int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   // only used to determine size of the 'len' field
   Message msg;
-  
+
   size_t chord_msg_len = chord_message__get_packed_size(chord_msg);
   size_t buf_size = sizeof(msg.len) + chord_msg_len;
   void *msg_buf = malloc(buf_size);
@@ -52,7 +52,7 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg.len, msg.ChordMessage);
   memcpy(msg.ChordMessage, recvd_chord_msg, msg.len);
-  
+
   return msg.ChordMessage;
 }
 

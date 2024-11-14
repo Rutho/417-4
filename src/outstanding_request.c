@@ -19,6 +19,7 @@ construct_outstanding_request(int query_id, Msg_Type message_type,
   out_req->next = out_req->prev = out_req;
   out_req->input_id = -1;
   out_req->node_id = -1;
+
   out_req->sent_message = sent_msg;
   if (sent_msg) {
     out_req->sent_message =
@@ -30,8 +31,10 @@ construct_outstanding_request(int query_id, Msg_Type message_type,
     out_req->dest_addr = (struct sockaddr *)malloc(sizeof(struct sockaddr));
     memcpy(out_req->dest_addr, dest_addr, sizeof(struct sockaddr));
   }
-  get_timeval_now(out_req->start_time);
+  // not declared?
+  get_timeval_now(&(out_req->start_time));
   // nth should be one
+
   out_req->nth_transmission = nth;
   return out_req;
 }
@@ -49,7 +52,11 @@ construct_outstanding_request_with_id(int query_id, Msg_Type message_type,
 }
 
 void free_outstanding_request(OutstandingRequest *req) {
-  destroy_msg(req->sent_message);
+  if (req->sent_message != NULL) {
+
+    destroy_msg(req->sent_message);
+  }
+
   free(req->dest_addr);
   free(req);
 }
