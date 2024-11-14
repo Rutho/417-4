@@ -41,6 +41,8 @@
  * - when do we reset timeout for periodic updates
  * - Consider case when we retransmit all the time because we forget to check if
  * the node we're sending to is ourselves
+ * - If Successor returns a null value for predecessor in stabilize, what do we
+ * do then?
  */
 
 #define STDIN 0
@@ -119,13 +121,12 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                          Entry *finger_table, Entry *successor_list,
                          Entry **predecessor, struct chord_arguments *args,
                          OutstandingRequest *request_queue) {
-  uint8_t *concatenation;
+  uint8_t concatenation[6];
 
-  concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
-                        (uint8_t *)&args->join_address.sin_addr.s_addr,
-                        concatenation);
+  concatenate_port_addr(args->join_address.sin_port,
+                        args->join_address.sin_addr.s_addr, concatenation);
   struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-  uint8_t extended_key[20];
+  uint8_t extended_key[32];
   sha1sum_finish(ctx, concatenation,
                  sizeof(args->my_address.sin_addr) +
                      sizeof(args->my_address.sin_port),
@@ -159,8 +160,7 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
     req->nth_closest_predecessor++;
   }
   switch (req->message_type) {
-
-  case join_find_successor:
+  case join_find_successor: {
     // Node associated with join address failed, meaning we revert to creating
     // our own chord ring
     if (req->node_id == newk) {
@@ -174,12 +174,14 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
     }
     delete_request(request_queue, req);
     break;
-  case fix_fingers_find_successor:
+  }
+  case fix_fingers_find_successor: {
     find_successor(*client, req->input_id, finger_table, successor_list,
                    request_queue, fix_fingers_find_successor, req->finger_index,
                    sock, req->nth_closest_predecessor);
     delete_request(request_queue, req);
     break;
+  }
   case stabilize_get_predecessor: {
     // Nothing to be done.
     // We've already removed it from the successor list and finger table right
@@ -198,29 +200,33 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
         generate_query_id(), get_pred, -1, req->sent_message,
         (struct sockaddr *)&new_successor_addr, 1);
     push_request(request_queue, new_req);
-    free(new_req);
+    free_outstanding_request(new_req);
     delete_request(request_queue, req);
-  } break;
-  case user_lookup:
+    break;
+  }
+  case user_lookup: {
     find_successor(*client, req->input_id, finger_table, successor_list,
                    request_queue, user_lookup, req->finger_index, sock,
                    req->nth_closest_predecessor);
     delete_request(request_queue, req);
     break;
-  case check_pred:
+  }
+  case check_pred: {
     *predecessor = NULL;
     delete_request(request_queue, req);
     break;
+  }
   case notify_send: {
-    Entry *entry = successor_list->next;
+    Entry *successor = successor_list->next;
     struct sockaddr_in new_successor_addr;
     new_successor_addr.sin_family = AF_INET;
-    new_successor_addr.sin_addr.s_addr = entry->address;
-    new_successor_addr.sin_port = entry->port;
-    send_notif(client, -1, entry->key, (struct sockaddr *)&new_successor_addr,
-               sock, request_queue);
+    new_successor_addr.sin_addr.s_addr = successor->address;
+    new_successor_addr.sin_port = successor->port;
+    send_notif(client, -1, successor->key,
+               (struct sockaddr *)&new_successor_addr, sock, request_queue);
     delete_request(request_queue, req);
-  } break;
+    break;
+  }
   case get_pred: {
     Entry *entry = successor_list->next;
     struct sockaddr_in new_successor_addr;
@@ -232,13 +238,14 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
     new_successor_addr.sin_port = entry->port;
     send_message(req->sent_message, sock,
                  (struct sockaddr *)&new_successor_addr);
-    OutstandingRequest *new_req = construct_outstanding_request(
+    OutstandingRequest *new_request = construct_outstanding_request(
         generate_query_id(), get_pred, -1, req->sent_message,
         (struct sockaddr *)&new_successor_addr, 1);
-    push_request(request_queue, new_req);
-    free(new_req);
+    push_request(request_queue, new_request);
+    free_outstanding_request(new_request);
     delete_request(request_queue, req);
-  } break;
+    break;
+  }
   case stablize_get_successor_list: {
     Entry *entry = successor_list->next;
     struct sockaddr_in new_successor_addr;
@@ -249,15 +256,15 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
     new_successor_addr.sin_addr.s_addr = entry->address;
     new_successor_addr.sin_port = entry->port;
     // TODO: DETERMINE WHICH MSG_CASE TO SEND.
-    // SENDING NOTIFY IS SAFER THAN SENDING GET_PRED
-    // there should be no difference
-    int qid = generate_query_id();
+    // SENDING NOTIFY IS SAFER THAN SENDING GET_PRED BCS OF RACE CONDITIONS
     send_notif(client, -1, entry->key, (struct sockaddr *)&new_successor_addr,
                sock, request_queue);
     delete_request(request_queue, req);
-  } break;
-
-  default:
+    break;
+  }
+  case local_fix_fingers_find_successor:
+    printf("local_fix_fingers_find_successor error: LOCAL REQUEST TIMED OUT");
+    delete_request(request_queue, req);
     break;
   }
 }
@@ -279,48 +286,35 @@ int main(int argc, char *argv[]) {
   int ssock;
   ssock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   assert(ssock >= 0);
-  FD_ZERO(&incoming);
-
   FD_SET(ssock, &incoming);
   maxfd = ssock;
+  struct sockaddr_in localaddr = args.my_address;
+  int bval = bind(ssock, (struct sockaddr *)&localaddr, sizeof(localaddr));
+  char host_buf[256];
+  gethostname(host_buf, sizeof(host_buf));
+  struct hostent *ent = gethostbyname(host_buf);
+  localaddr.sin_addr = *((struct in_addr *)ent->h_addr_list[0]);
+  assert(bval >= 0);
+  FD_ZERO(&incoming);
   FD_SET(STDIN, &incoming);
   if (STDIN > ssock) {
     maxfd = STDIN;
   }
-  struct sockaddr_in localaddr = args.my_address;
-  int bval = bind(ssock, (struct sockaddr *)&localaddr, sizeof(localaddr));
-
-  char host_buf[256];
-  gethostname(host_buf, sizeof(host_buf));
-  struct hostent *ent = gethostbyname(host_buf);
-  struct in_addr **host_ls = NULL;
-  host_ls = (struct in_addr **)ent->h_addr_list;
-  localaddr.sin_addr.s_addr = host_ls[0]->s_addr;
-  assert(bval >= 0);
 
   // TODO: setup the node (create/join chord ring, init ring table and successor
   // list, etc)
   // Get id from hash of sum of concatenation of port and address
-  // uint8_t *concatenation;
+  uint8_t concatenation[6];
 
-  // concatenate_port_addr((uint8_t *)&localaddr->join_address.sin_port,
-  //                    (uint8_t *)&localaddr->join_address.sin_addr.s_addr,
-  //                  concatenation);
-  // struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-  // uint8_t extended_key[20];
-  // sha1sum_finish(ctx, concatenation,
-  //            sizeof(localaddr->my_address.sin_addr) +
-  //             sizeof(localaddr->my_address.sin_port),
-  //      extended_key);
-
+  concatenate_port_addr(localaddr.sin_port, localaddr.sin_addr.s_addr,
+                        concatenation);
   struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-  sha1sum_update(ctx, (void *)&localaddr.sin_port, 6);
-  uint8_t extended_key[20];
-  sha1sum_finish(ctx, (void *)&localaddr.sin_addr.s_addr,
-                 sizeof(localaddr.sin_addr.s_addr), extended_key);
+  uint8_t extended_key[32];
+  sha1sum_finish(ctx, concatenation,
+                 sizeof(localaddr.sin_addr) + sizeof(localaddr.sin_port),
+                 extended_key);
   uint64_t key = sha1sum_truncated_head(extended_key);
   sha1sum_reset(ctx);
-  sha1sum_destroy(ctx);
   // No need to explicitly create a new chord ring
   // Since creating a ring requires no additional set up besides initializing
   // these variables
@@ -333,41 +327,22 @@ int main(int argc, char *argv[]) {
 
   // Checks if join address was provided. Not sure if it is actually set to NULL
   // when not provided.
-  int adrprov = 0;
-  for (int i = 0; i < argc; i++) {
+  if (args.join_address.sin_addr.s_addr != 0) {
 
-    printf("%s\n", argv[i]);
+    uint8_t concatenation_join[6];
 
-    if (strcmp(argv[i], "--ja") == 0) {
-      printf("study the blade\n");
-      adrprov = 1;
-    }
-  }
-  if (argc > 3 && adrprov) {
-
-    // uint8_t *concatenation;
-
-    // concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
-    //                    (uint8_t *)&args->join_address.sin_addr.s_addr,
-    //                  concatenation);
-    // struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-    // uint8_t extended_key[20];
-    // sha1sum_finish(ctx, concatenation,
-    //            sizeof(args->join_address.sin_addr) +
-    //             sizeof(args->join_address.sin_port),
-    //      extended_key);
-
+    concatenate_port_addr(args.join_address.sin_port,
+                          args.join_address.sin_addr.s_addr,
+                          concatenation_join);
     struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-    sha1sum_update(ctx, (void *)&args.join_address.sin_port, 6);
-    uint8_t extended_key[20];
-    sha1sum_finish(ctx, (void *)&args.join_address.sin_addr.s_addr,
-                   sizeof(args.join_address.sin_addr.s_addr), extended_key);
+    uint8_t extended_key[32];
+    sha1sum_finish(ctx, concatenation_join,
+                   sizeof(localaddr.sin_addr) + sizeof(localaddr.sin_port),
+                   extended_key);
     uint64_t newk = sha1sum_truncated_head(extended_key);
     sha1sum_reset(ctx);
-    sha1sum_destroy(ctx);
-    join_chord_ring_send(client, key, newk,
-                         (struct sockaddr *)&args.join_address, ssock,
-                         request_queue, 1);
+    join_chord_ring_send(key, newk, (struct sockaddr *)&args.join_address,
+                         ssock, request_queue, 1);
   }
 
   // Initialize timevals for periodic updates
@@ -382,14 +357,10 @@ int main(int argc, char *argv[]) {
   get_future_timestamp(&next_stabilize_time, args.stablize_period * 1E-1);
 
   while (1) {
-    char user_input[MAX_BYTES];
 
     // Iterate through local outstanding requests and handle them
     OutstandingRequest *curr_req = request_queue->next;
-    OutstandingRequest *incrm = curr_req;
-    while (incrm != request_queue) {
-      curr_req = incrm;
-      incrm = incrm->next;
+    while (curr_req != request_queue) {
       if (curr_req->query_id == -1) {
         switch (curr_req->message_type) {
         // we dont need a case for it being local the -1 already makes it local.
@@ -413,16 +384,17 @@ int main(int argc, char *argv[]) {
               find_entry_by_key(successor_list, curr_req->node_id);
           char adr[INET_ADDRSTRLEN];
           inet_ntop(AF_INET, &new_finger->address, adr, sizeof(adr));
-          printf("this is local huh\n");
           printf("< ");
-          printf("%" PRIu64 " %s %u\n", curr_req->input_id, adr,
-                 ntohl(new_finger->port));
+          printf("%" PRIu64 " %s %u\n", new_finger->key, adr, new_finger->port);
           delete_request_by_query_id(request_queue, curr_req->query_id);
+          break;
         }
         default:
           break;
         }
       }
+
+      curr_req = curr_req->next;
     }
 
     // Handle timed out requests
@@ -450,15 +422,6 @@ int main(int argc, char *argv[]) {
     int next_periodic_update_flag =
         next_timeout(&next_check_pred_time, &next_fix_fingers_time,
                      &next_stabilize_time, &timeout);
-
-    FD_ZERO(&incoming);
-
-    FD_SET(ssock, &incoming);
-    maxfd = ssock;
-    FD_SET(STDIN, &incoming);
-    if (STDIN > ssock) {
-      maxfd = STDIN;
-    }
 
     int s_turn = select(maxfd + 1, &incoming, NULL, NULL, &timeout);
     if (s_turn == -1) {
@@ -508,9 +471,7 @@ int main(int argc, char *argv[]) {
         break;
       }
     } else {
-
       if (FD_ISSET(STDIN, &incoming)) {
-        printf("USER INPUT GET RIGHT HERE\n");
         // TODO: Determine max length of string. For now, assume 100 is enough
         int lookup_length = 6;
         int printstate_length = 10;
@@ -518,7 +479,7 @@ int main(int argc, char *argv[]) {
         printf("> ");
         int num_bytes = read(STDIN, buf, 100);
         printf("\n");
-        if (strncmp("Lookup", buf, lookup_length) == 0) {
+        if (strncmp("Lookup", buf, lookup_length)) {
           char *lookup_string = (char *)malloc(num_bytes - lookup_length);
           //+1 and -1 to account for space between lookup and string
           int lookup_string_length = num_bytes - lookup_length - 1;
@@ -529,18 +490,10 @@ int main(int argc, char *argv[]) {
           sha1sum_finish(ctx, (uint8_t *)lookup_string, lookup_string_length,
                          extended_key);
           uint64_t truncated_key = sha1sum_truncated_head(extended_key);
-          printf("< %s", lookup_string);
-          printKey(truncated_key);
-          printf("\n");
-          printf("THIS IS  THE HASH\n");
-          printf("%lu\n", truncated_key);
-
-          sha1sum_destroy(ctx);
-          free(lookup_string);
 
           find_successor(*client, truncated_key, finger_table, successor_list,
                          request_queue, user_lookup, -1, ssock, 1);
-        } else if (strncmp("PrintState", buf, printstate_length) == 0) {
+        } else if (strncmp("PrintState", buf, printstate_length)) {
           char adr[INET_ADDRSTRLEN];
           inet_ntop(AF_INET, &localaddr.sin_addr.s_addr, adr, sizeof(adr));
           int por = ntohl(localaddr.sin_port);
@@ -571,8 +524,8 @@ int main(int argc, char *argv[]) {
       if (FD_ISSET(ssock, &incoming)) {
         struct sockaddr src_addr;
         printf("i think its recv mssage\n");
-        ChordMessage *msg = recv_message(ssock, &src_addr);
-        printf("i got a msg\n");
+        struct ChordMessage *msg = recv_message(ssock, &src_addr);
+
         // cases to handle requests
         switch (msg->msg_case) {
         case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
@@ -582,7 +535,6 @@ int main(int argc, char *argv[]) {
           send_message(msg_send, ssock, &src_addr);
         } break;
         case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
-          printf("A NODE CONTACTED ME!!!!\n");
           // Might need a separate Msg_Type for the case where find_successor
           // is called bcs of a find_successor request
           /*find_successor()*/
@@ -649,7 +601,6 @@ int main(int argc, char *argv[]) {
             int rq_index = 0;
             for (k = request_queue->next; k != request_queue; k = k->next) {
               if (k->query_id == msg->query_id) {
-
                 break;
               }
               rq_index++;
@@ -691,21 +642,18 @@ int main(int argc, char *argv[]) {
               Entry *pred = init_entry(g_pred->key, (struct sockaddr *)&temp);
 
               switch (k->message_type) {
-
               case (fix_fingers_find_successor): {
-
                 handle_fix_fingers_find_successor_response(
                     finger_table, k->finger_index, pred);
               } break;
               case (join_find_successor): {
-                push_entry(finger_table, pred);
+                insert_entry(successor_list, 0, pred);
+                insert_entry(finger_table, 0, pred);
                 break;
               }
               case (user_lookup): {
-
                 char adr[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &g_pred->address, adr, sizeof(adr));
-                printf("the magic arts\n");
                 printf("< ");
                 printf("%" PRIu64 " %s %u\n", pred->key, adr, g_pred->port);
                 break;
@@ -749,8 +697,10 @@ int main(int argc, char *argv[]) {
             tmp.port = successordat->sin_port;
             tmp.address = successordat->sin_addr.s_addr;
             push_entry(successor_list, &tmp);
-            for (int i = 0; (unsigned)i < numnode - 1; i++) {
-
+            if (numnode >= args.num_successors) {
+              numnode = args.num_successors - 1;
+            }
+            for (size_t i = 0; i < numnode; i++) {
               Entry tmp;
               tmp.key = rsp->successors[i]->key;
               tmp.port = rsp->successors[i]->address;
@@ -768,8 +718,7 @@ int main(int argc, char *argv[]) {
 
             // delete_entry_at_index(Entry *head, int index) pos = 1;
             // free_request(k);
-            break;
-          }
+          } break;
           default:
             break;
           }
