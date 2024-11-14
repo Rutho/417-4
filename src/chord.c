@@ -571,7 +571,8 @@ int main(int argc, char *argv[]) {
       if (FD_ISSET(ssock, &incoming)) {
         struct sockaddr src_addr;
         printf("i think its recv mssage\n");
-        struct ChordMessage *msg = recv_message(ssock, &src_addr);
+        ChordMessage *msg = recv_message(ssock, &src_addr);
+        printf("i got a msg\n");
         // cases to handle requests
         switch (msg->msg_case) {
         case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
@@ -772,7 +773,7 @@ int main(int argc, char *argv[]) {
             break;
           }
         }
-        free(msg);
+        chord_message__free_unpacked(msg, NULL);
       }
     }
   }

@@ -24,14 +24,15 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   // only used to determine size of the 'len' field
   Message msg;
 
-  size_t chord_msg_len = chord_message__get_packed_size(chord_msg);
-  size_t buf_size = sizeof(msg.len) + chord_msg_len;
+  uint64_t chord_msg_len = chord_message__get_packed_size(chord_msg);
+  size_t buf_size = sizeof(uint64_t) + chord_msg_len;
   void *msg_buf = malloc(buf_size);
+  printf("WHAT IS THE SIZE OF WHAT I SEND  %lu\n", chord_msg_len);
 
   // I set struct sockaddr_in address;ing msg.len = chord_msg_len (so excludes
   // the size of the len field itself)
-  memcpy(msg_buf, &chord_msg_len, sizeof(msg.len));
-  chord_message__pack(chord_msg, msg_buf + sizeof(msg.len));
+  memcpy(msg_buf, &chord_msg_len, sizeof(uint64_t));
+  chord_message__pack(chord_msg, msg_buf + sizeof(uint64_t));
   sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
   free(msg_buf);
   return chord_msg->query_id;
@@ -40,20 +41,18 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
 // Receives data from the given dest_sock and returns a ChordMessage with the
 // received data. It also saves the sockaddr info of the message sender in info
 ChordMessage *recv_message(int sock, struct sockaddr *info) {
-  Message msg;
 
+  uint64_t msg_size;
   socklen_t len = sizeof(struct sockaddr_in);
 
-  recvfrom(sock, &msg.len, sizeof(msg.len), MSG_PEEK, info, &len);
+  recvfrom(sock, &msg_size, sizeof(msg_size), 0, info, &len);
+  printf("THE SIZE OF WHAT IS RECIVED %lu\n", msg_size);
+  void *buffr = malloc(msg_size);
+  recvfrom(sock, buffr, msg_size, 0, info, &len);
+  ChordMessage *recvd_chord_msg = chord_message__unpack(NULL, msg_size, buffr);
+  printf("%d\n", recvd_chord_msg->query_id);
 
-  msg.ChordMessage = malloc(msg.len);
-
-  recvfrom(sock, msg.ChordMessage, msg.len, 0, info, &len);
-  ChordMessage *recvd_chord_msg =
-      chord_message__unpack(NULL, msg.len, msg.ChordMessage);
-  memcpy(msg.ChordMessage, recvd_chord_msg, msg.len);
-
-  return msg.ChordMessage;
+  return recvd_chord_msg;
 }
 
 ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
@@ -231,6 +230,8 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
 
 // 0 for correct, -1 for error
 int destroy_msg(ChordMessage *msg) {
+
+  // chord_message__free_unpacked(msg,NULL);
 
   switch (msg->msg_case) {
 
