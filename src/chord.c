@@ -579,7 +579,6 @@ int main(int argc, char *argv[]) {
             int rq_index = 0;
             for (k = request_queue->next; k != request_queue; k = k->next) {
               if (k->query_id == msg->query_id) {
-                
                 break;
               }
               rq_index++;
