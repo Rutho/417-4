@@ -786,7 +786,10 @@ int main(int argc, char *argv[]) {
             tmp.port = successordat->sin_port;
             tmp.address = successordat->sin_addr.s_addr;
             push_entry(successor_list, &tmp);
-            for (int i = 0; (unsigned)i < numnode - 1; i++) {
+            if (numnode >= args.num_successors) {
+              numnode = args.num_successors - 1;
+            }
+            for (int i = 0; (unsigned)i < numnode; i++) {
 
               Entry tmp;
               tmp.key = rsp->successors[i]->key;

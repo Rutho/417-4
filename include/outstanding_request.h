@@ -28,7 +28,7 @@ struct OutstandingRequest {
   Msg_Type message_type;
   int finger_index; // Only when message_type is fix_finger_find_successor
   struct timeval start_time;
-  int nth_transmission; // 1 if original transmission, +1 if retransmission
+  int nth_transmission; // 1 if original transmission, >1 if retransmission
   ChordMessage *sent_message;
   struct sockaddr *dest_addr;
   int nth_closest_predecessor;

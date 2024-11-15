@@ -17,12 +17,10 @@
 #include <time.h>
 
 int generate_query_id() {
-
+  
   struct timeval temp;
-
   get_timeval_now(&temp);
-
-  return temp.tv_sec;
+  return (int)(((uint32_t) temp.tv_usec + (uint32_t) temp.tv_sec) % INT32_MAX);
 }
 
 // Sends the given ChordMessage to the given socket
@@ -40,6 +38,8 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   memcpy(msg_buf, &chord_msg_len, sizeof(uint64_t));
   chord_message__pack(chord_msg, msg_buf + sizeof(uint64_t));
   sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
+  ChordMessage *new = chord_message__unpack(NULL, buf_size - sizeof(uint64_t), msg_buf + sizeof(uint64_t));
+  printf("sent query id: %d\n",new->query_id);
   free(msg_buf);
   return chord_msg->query_id;
 }
@@ -53,10 +53,11 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
 
   recvfrom(sock, &msg_size, sizeof(msg_size), MSG_PEEK, info, &len);
   msg_size = be64toh(msg_size);
-  printf("THE SIZE OF WHAT IS RECIVED %lu\n", msg_size);
+  printf("THE SIZE OF MSG TO BE RECIVED %lu\n", msg_size);
 
   void *buffr = malloc(msg_size + sizeof(uint64_t));
-  recvfrom(sock, buffr, msg_size + sizeof(uint64_t), 0, info, &len);
+  int k = recvfrom(sock, buffr, msg_size + sizeof(uint64_t), 0, info, &len);
+  printf("actual size received: %d\n", k);
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));
   printf("%d\n", recvd_chord_msg->query_id);
@@ -81,7 +82,6 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     rq->key = id;
     cloak->find_successor_request = rq;
     cloak->query_id = qid;
-
     ret = cloak;
 
   } break;
