@@ -45,14 +45,14 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
   uint64_t msg_size;
   socklen_t len = sizeof(struct sockaddr_in);
 
-  recvfrom(sock, &msg_size, sizeof(msg_size), 0, info, &len);
+  recvfrom(sock, &msg_size, sizeof(msg_size), MSG_PEEK, info, &len);
+  msg_size = be64toh(msg_size);
   printf("THE SIZE OF WHAT IS RECIVED %lu\n", msg_size);
 
-  msg_size = be64toh(msg_size);
   void *buffr = malloc(msg_size + sizeof(uint64_t));
-
   recvfrom(sock, buffr, msg_size, 0, info, &len);
-  ChordMessage *recvd_chord_msg = chord_message__unpack(NULL, msg_size, buffr);
+  ChordMessage *recvd_chord_msg =
+      chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));
   printf("%d\n", recvd_chord_msg->query_id);
   free(buffr);
   return recvd_chord_msg;
@@ -70,7 +70,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     find_successor_request__init(rq);
     chord_message__init(cloak);
     cloak->version = 417;
-
+    cloak->has_query_id = 1;
     cloak->msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST;
     rq->key = id;
     cloak->find_successor_request = rq;
@@ -120,19 +120,22 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
 
     cloak->msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE;
     rq->key = id;
+
     nd->key = optional->key;
     nd->port = optional->port;
     nd->address = optional->address;
     rq->node = nd;
+
     cloak->find_successor_response = rq;
     cloak->query_id = qid;
+
     ret = cloak;
   } break;
   case CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST: {
     ChordMessage *cloak = malloc(sizeof(ChordMessage));
     GetPredecessorRequest *rq = malloc(sizeof(GetPredecessorRequest));
     get_predecessor_request__init(rq);
-    
+
     chord_message__init(cloak);
     cloak->version = 417;
 

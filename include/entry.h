@@ -19,7 +19,7 @@ void get_successor_list_send(struct sockaddr *dest_addr, int sock, int suc_id,
                              OutstandingRequest *request_queue, Msg_Type M);
 void send_notif(Entry *client, int id, int rev_id, struct sockaddr *join_addr,
                 int sock, OutstandingRequest *request_queue);
-void user_lookup_send(int id, int rev_id,
+void user_lookup_send(Entry *client, int id, int rev_id,
                       struct sockaddr *join_addr, int sock,
                       OutstandingRequest *request_queue,
                       int nth_closest_predecessor);
@@ -30,11 +30,11 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
                               Entry *successor_list, int nth_closest_predecessor);
 Entry *init_entry(uint64_t key, struct sockaddr *address);
-void join_chord_ring_send(int id, int rev_id,
+void join_chord_ring_send(Entry *client, int id, int rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue,
                           int nth_closest_predecessor);
-void fix_finger_find_successor_request_send(int id, int rev_id,
+void fix_finger_find_successor_request_send(Entry *client, int id, int rev_id,
                                             struct sockaddr *join_addr,
                                             int sock,
                                             OutstandingRequest *request_queue,

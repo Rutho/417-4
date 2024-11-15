@@ -44,6 +44,6 @@ int sha1sum_destroy(struct sha1sum_ctx *);
  */
 uint64_t sha1sum_truncated_head(uint8_t *sha1_hash);
 
-void concatenate_port_addr(uint16_t port, uint32_t addr, uint8_t *out);
+void concatenate_port_addr(uint8_t *port, uint8_t *addr, uint8_t *out);
 
 #endif
