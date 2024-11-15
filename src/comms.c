@@ -165,15 +165,23 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     chord_message__init(cloak);
     cloak->version = 417;
     cloak->has_query_id = 1;
-    nd->key = optional->key;
-    nd->port = optional->port;
-    nd->address = optional->address;
+    if (optional != NULL) {
+      nd->key = optional->key;
+      nd->port = optional->port;
+      nd->address = optional->address;
+      rq->node = nd;
+    } else {
+      nd->key = -1;
+      nd->port = -1;
+
+      nd->address = -1;
+      rq->node = nd;
+    }
+
     cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE;
-    rq->node = nd;
     cloak->get_predecessor_response = rq;
     cloak->query_id = qid;
     ret = cloak;
-
   } break;
 
   case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {

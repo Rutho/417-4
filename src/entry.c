@@ -30,6 +30,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
   if (is_between_inclusive(lower, id, higher)) {
     // ret = successor;
+    //
     OutstandingRequest *temp = construct_outstanding_request_with_id(
         -1, M, index, id, successor->key, NULL, NULL, 1);
     push_request(request_queue, temp);
@@ -51,6 +52,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
     } break;
     case fix_fingers_find_successor: {
+
       fix_finger_find_successor_request_send(
           &client, id, preced->key, (struct sockaddr *)&tmp, sock,
 
@@ -124,7 +126,7 @@ void send_notif(Entry *client, uint64_t id, uint64_t rev_id,
                 struct sockaddr *join_addr, int sock,
                 OutstandingRequest *request_queue) {
   ChordMessage *msg = construct_msg(CHORD_MESSAGE__MSG_NOTIFY_REQUEST, id,
-                                    generate_query_id(), NULL);
+                                    generate_query_id(), client);
   int query_id = send_message(msg, sock, join_addr);
   OutstandingRequest *new_req = construct_outstanding_request_with_id(
       query_id, notify_send, -1, id, rev_id, msg, join_addr, 1);

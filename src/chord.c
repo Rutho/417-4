@@ -369,6 +369,10 @@ int main(int argc, char *argv[]) {
     join_chord_ring_send(client, key, newk,
                          (struct sockaddr *)&args.join_address, ssock,
                          request_queue, 1);
+
+    printf("what we hash the chord owner to\n");
+    printKey(newk);
+    printf("\n");
   }
 
   // Initialize timevals for periodic updates
@@ -400,6 +404,7 @@ int main(int argc, char *argv[]) {
         switch (curr_req->message_type) {
         // we dont need a case for it being local the -1 already makes it local.
         case fix_fingers_find_successor: {
+
           Entry *old_finger =
               find_entry_at_index(finger_table, curr_req->finger_index);
           // If we don't find a match, we might be misusing local requests.
@@ -478,11 +483,11 @@ int main(int argc, char *argv[]) {
     if (s_turn == 0) {
       switch (next_periodic_update_flag) {
       case CHECK_PREDECESSOR:
-        if (predecessor) {
+        if (predecessor != NULL) {
           struct sockaddr_in jaddr;
           jaddr.sin_family = AF_INET;
-          jaddr.sin_addr.s_addr = predecessor->next->address;
-          jaddr.sin_port = predecessor->next->port;
+          jaddr.sin_addr.s_addr = predecessor->address;
+          jaddr.sin_port = predecessor->port;
 
           check_predecessor_send(client, (struct sockaddr *)&jaddr, ssock,
                                  request_queue, check_pred);
@@ -492,11 +497,11 @@ int main(int argc, char *argv[]) {
       case FIX_FINGERS:
         // find_successor will require a finger_index
         fix_finger_index++;
-        if (fix_finger_index > MOD_M) {
-          fix_finger_index = 1;
+        if (fix_finger_index >= MOD_M) {
+          fix_finger_index = 0;
         }
         find_successor(*client,
-                       client->key + ((int)pow(2, (fix_finger_index - 1))),
+                       client->key + ((uint64_t)pow(2, (fix_finger_index))),
                        finger_table, successor_list, request_queue,
                        fix_fingers_find_successor, fix_finger_index, ssock, 1);
         shift_timeval(&next_fix_fingers_time, args.fix_fingers_period);
@@ -566,6 +571,7 @@ int main(int argc, char *argv[]) {
             pos++;
           }
           pos = 1;
+
           for (k = finger_table->next; k != finger_table; k = k->next) {
             char adr[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &k->address, adr, sizeof(adr));
@@ -633,6 +639,9 @@ int main(int argc, char *argv[]) {
             temp.sin_addr.s_addr = (tmp->address);
             temp.sin_family = AF_INET;
             Entry *newpred = init_entry(tmp->key, (struct sockaddr *)&temp);
+            if (predecessor == NULL) {
+              free(predecessor);
+            }
             predecessor = newpred;
           }
           ChordMessage *sending = construct_msg(
@@ -661,12 +670,11 @@ int main(int argc, char *argv[]) {
             struct FindSuccessorResponse *ls = msg->find_successor_response;
 
             Node *g_pred = ls->node;
-            uint64_t lower = k->node_id;
+            uint64_t lower = key;
             uint64_t higher = g_pred->key;
             uint64_t mid = k->input_id;
             // we have not found the successor and need to send further
-            printf("HALL OF INFINNITE DEATH\n");
-            printf("%d\n", k->message_type);
+
             printKey(lower);
 
             printKey(mid);
@@ -713,6 +721,8 @@ int main(int argc, char *argv[]) {
               case (join_find_successor): {
 
                 push_entry(finger_table, pred);
+                push_entry(successor_list, pred);
+
                 break;
               }
               case (user_lookup): {
@@ -735,15 +745,28 @@ int main(int argc, char *argv[]) {
           case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE: {
 
             GetPredecessorResponse *k;
+            OutstandingRequest *ctex =
+                find_request_by_query_id(request_queue, msg->query_id);
             k = msg->get_predecessor_response;
+            uint64_t newprd = k->node->key;
+            if (k->node->port != -1) {
 
+              if (is_between_exclusive(key, newprd, ctex->node_id)) {
+
+                update_entry(finger_table->next, k->node->key, k->node->address,
+                             k->node->port);
+                update_entry(successor_list->next, k->node->key,
+                             k->node->address, k->node->port);
+              }
+            }
+            delete_request_by_query_id(request_queue, msg->query_id);
             struct sockaddr_in jaddr;
             jaddr.sin_family = AF_INET;
-            jaddr.sin_addr.s_addr = k->node->address;
-            jaddr.sin_port = k->node->port;
-            send_notif(client, key, k->node->key, (struct sockaddr *)&jaddr,
-                       ssock, request_queue);
-            delete_request_by_query_id(request_queue, msg->query_id);
+            jaddr.sin_addr.s_addr = successor_list->next->address;
+            jaddr.sin_port = successor_list->next->port;
+            send_notif(client, key, successor_list->next->key,
+                       (struct sockaddr *)&jaddr, ssock, request_queue);
+
             break;
           }
           case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
