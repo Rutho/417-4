@@ -99,6 +99,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     nd->port = optional->port;
     nd->address = optional->address;
     cloak->notify_request = rq;
+    cloak->has_query_id = 1;
     rq->node = nd;
     ret = cloak;
   } break;
@@ -111,7 +112,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     cloak->version = 417;
     cloak->msg_case = CHORD_MESSAGE__MSG_NOTIFY_RESPONSE;
     cloak->query_id = qid;
-
+    cloak->has_query_id = 1;
     cloak->notify_response = rq;
     ret = cloak;
   } break;
@@ -126,11 +127,13 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
 
     cloak->msg_case = CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE;
     rq->key = id;
-
+    rq->has_key = 1;
+    cloak->has_query_id = 1;
     nd->key = optional->key;
     nd->port = optional->port;
     nd->address = optional->address;
     rq->node = nd;
+    cloak->has_query_id = 1;
 
     cloak->find_successor_response = rq;
     cloak->query_id = qid;
@@ -144,7 +147,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
 
     chord_message__init(cloak);
     cloak->version = 417;
-
+    cloak->has_query_id = 1;
     cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
 
     cloak->get_predecessor_request = rq;
@@ -161,6 +164,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     node__init(nd);
     chord_message__init(cloak);
     cloak->version = 417;
+    cloak->has_query_id = 1;
     nd->key = optional->key;
     nd->port = optional->port;
     nd->address = optional->address;
@@ -179,7 +183,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
 
     chord_message__init(cloak);
     cloak->version = 417;
-
+    cloak->has_query_id = 1;
     cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
 
     cloak->check_predecessor_request = rq;
@@ -196,7 +200,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     cloak->version = 417;
 
     cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
-
+    cloak->has_query_id = 1;
     cloak->check_predecessor_response = rq;
     cloak->query_id = qid;
     ret = cloak;
@@ -210,6 +214,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     cloak->query_id = qid;
     cloak->get_successor_list_request = rq;
     ret = cloak;
+    cloak->has_query_id = 1;
 
   } break;
   case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
@@ -231,6 +236,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     }
     cloak->get_successor_list_response = rsp;
     cloak->query_id = qid;
+    cloak->has_query_id = 1;
     cloak->msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE;
     ret = cloak;
   } break;

@@ -514,6 +514,7 @@ int main(int argc, char *argv[]) {
                                request_queue, get_pred, -1);
         }
         shift_timeval(&next_stabilize_time, args.fix_fingers_period);
+
         break;
       }
     } else {
@@ -525,7 +526,8 @@ int main(int argc, char *argv[]) {
         int printstate_length = 10;
         char buf[101];
         int num_bytes = read(STDIN, buf, 100);
-        //Read takes in the \n character at the end of stdin. This replaces it with the null terminator
+        // Read takes in the \n character at the end of stdin. This replaces it
+        // with the null terminator
         buf[num_bytes - 1] = '\x00';
         if (strncmp("Lookup", buf, lookup_length) == 0) {
           char *lookup_string = (char *)malloc(num_bytes - lookup_length + 1);
@@ -621,6 +623,7 @@ int main(int argc, char *argv[]) {
         } break;
 
         case CHORD_MESSAGE__MSG_NOTIFY_REQUEST: {
+          printf("inside notif\n");
           struct NotifyRequest *ls = msg->notify_request;
           Node *tmp = ls->node;
           if (predecessor == NULL ||
@@ -668,6 +671,7 @@ int main(int argc, char *argv[]) {
 
             printKey(mid);
             printKey(higher);
+
             if (!(is_between_inclusive(lower, mid, higher))) {
               int qid = generate_query_id();
               ChordMessage *msg =
@@ -684,6 +688,7 @@ int main(int argc, char *argv[]) {
                       qid, k->message_type, k->finger_index, k->input_id,
                       higher, msg, (struct sockaddr *)&tmp, 1);
               push_request(request_queue, new_req);
+              delete_request_by_query_id(request_queue, msg->query_id);
               free_outstanding_request(new_req);
               // push_entry(request_queue,new_req);
               // delete_entry_at_index(request_queue,rq_index);
@@ -696,6 +701,7 @@ int main(int argc, char *argv[]) {
               temp.sin_addr.s_addr = g_pred->address;
               temp.sin_family = AF_INET;
               Entry *pred = init_entry(g_pred->key, (struct sockaddr *)&temp);
+              delete_request_by_query_id(request_queue, msg->query_id);
 
               switch (k->message_type) {
 
@@ -705,6 +711,7 @@ int main(int argc, char *argv[]) {
                     finger_table, k->finger_index, pred);
               } break;
               case (join_find_successor): {
+
                 push_entry(finger_table, pred);
                 break;
               }

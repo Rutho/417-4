@@ -26,9 +26,10 @@ int request_queue_size(OutstandingRequest *queue) {
 OutstandingRequest *push_request(OutstandingRequest *queue,
                                  OutstandingRequest *req) {
   OutstandingRequest *last_added = queue->prev;
-  OutstandingRequest *req_copy = construct_outstanding_request_with_id(req->query_id,
-  req->message_type, req->finger_index, req->input_id, req->node_id, req->sent_message, req->dest_addr,
-  req->nth_closest_predecessor);
+  OutstandingRequest *req_copy = construct_outstanding_request_with_id(
+      req->query_id, req->message_type, req->finger_index, req->input_id,
+      req->node_id, req->sent_message, req->dest_addr,
+      req->nth_closest_predecessor);
   last_added->next->prev = req_copy;
   req_copy->next = last_added->next;
   last_added->next = req_copy;
@@ -63,6 +64,7 @@ OutstandingRequest *find_request_by_query_id(OutstandingRequest *queue,
                                              int query_id) {
   OutstandingRequest *curr_req = queue->next;
   while (curr_req != queue) {
+
     if (curr_req->query_id == query_id) {
       return curr_req;
     }
