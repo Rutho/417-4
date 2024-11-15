@@ -56,7 +56,9 @@ void free_outstanding_request(OutstandingRequest *req) {
 
     destroy_msg(req->sent_message);
   }
-
-  free(req->dest_addr);
+  if (req->dest_addr != NULL) {
+    
+    free(req->dest_addr);
+  }
   free(req);
 }

@@ -26,8 +26,9 @@ int request_queue_size(OutstandingRequest *queue) {
 OutstandingRequest *push_request(OutstandingRequest *queue,
                                  OutstandingRequest *req) {
   OutstandingRequest *last_added = queue->prev;
-  OutstandingRequest *req_copy = malloc(sizeof(OutstandingRequest));
-  memcpy(req_copy, req, sizeof(OutstandingRequest));
+  OutstandingRequest *req_copy = construct_outstanding_request_with_id(req->query_id,
+  req->message_type, req->finger_index, req->input_id, req->node_id, req->sent_message, req->dest_addr,
+  req->nth_closest_predecessor);
   last_added->next->prev = req_copy;
   req_copy->next = last_added->next;
   last_added->next = req_copy;
