@@ -1,6 +1,12 @@
 #ifndef _COMMS_C_
 #define _COMMS_C_
 
+#include "../include/comms.h"
+#include "../include/chord.h"
+#include "../include/entry.h"
+#include "../include/entry_list.h"
+#include "../include/time_utils.h"
+#include <endian.h>
 #include <math.h>
 #include <netinet/in.h>
 #include <stdint.h>
@@ -8,16 +14,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <time.h>
 
-#include <endian.h>
-#include <math.h>
+int generate_query_id() {
 
-#include "../include/chord.h"
-#include "../include/comms.h"
-#include "../include/entry.h"
-#include "../include/entry_list.h"
+  struct timeval temp;
 
-int generate_query_id() { return rand(); }
+  get_timeval_now(&temp);
+
+  return temp.tv_sec;
+}
 
 // Sends the given ChordMessage to the given socket
 int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
@@ -50,7 +56,7 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
   printf("THE SIZE OF WHAT IS RECIVED %lu\n", msg_size);
 
   void *buffr = malloc(msg_size + sizeof(uint64_t));
-  recvfrom(sock, buffr, msg_size, 0, info, &len);
+  recvfrom(sock, buffr, msg_size + sizeof(uint64_t), 0, info, &len);
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));
   printf("%d\n", recvd_chord_msg->query_id);

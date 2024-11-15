@@ -106,7 +106,7 @@ Entry *init_entry(uint64_t key, struct sockaddr *address) {
   return entry;
 }
 
-void user_lookup_send(Entry *client, int id, int rev_id,
+void user_lookup_send(Entry *client, uint64_t id, uint64_t rev_id,
                       struct sockaddr *join_addr, int sock,
                       OutstandingRequest *request_queue,
                       int nth_closest_predecessor) {
@@ -119,8 +119,9 @@ void user_lookup_send(Entry *client, int id, int rev_id,
   push_request(request_queue, new_req);
 }
 
-void send_notif(Entry *client, int id, int rev_id, struct sockaddr *join_addr,
-                int sock, OutstandingRequest *request_queue) {
+void send_notif(Entry *client, uint64_t id, uint64_t rev_id,
+                struct sockaddr *join_addr, int sock,
+                OutstandingRequest *request_queue) {
   ChordMessage *msg = construct_msg(CHORD_MESSAGE__MSG_NOTIFY_REQUEST, id,
                                     generate_query_id(), NULL);
   int query_id = send_message(msg, sock, join_addr);
@@ -129,7 +130,7 @@ void send_notif(Entry *client, int id, int rev_id, struct sockaddr *join_addr,
   push_request(request_queue, new_req);
 }
 // i am doing iterative so we send out requests for finger lists;;.
-void join_chord_ring_send(Entry *client, int id, int rev_id,
+void join_chord_ring_send(Entry *client, uint64_t id, uint64_t rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue,
                           int nth_closest_predecessor) {
@@ -143,8 +144,9 @@ void join_chord_ring_send(Entry *client, int id, int rev_id,
 }
 
 void fix_finger_find_successor_request_send(
-    Entry *client, int id, int rev_id, struct sockaddr *join_addr, int sock,
-    OutstandingRequest *request_queue, int index, int nth_closest_predecessor) {
+    Entry *client, uint64_t id, uint64_t rev_id, struct sockaddr *join_addr,
+    int sock, OutstandingRequest *request_queue, int index,
+    int nth_closest_predecessor) {
   ChordMessage *msg = construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
                                     id, generate_query_id(), NULL);
   int query_id = send_message(msg, sock, join_addr);

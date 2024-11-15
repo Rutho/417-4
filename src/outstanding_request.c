@@ -48,6 +48,7 @@ construct_outstanding_request_with_id(int query_id, Msg_Type message_type,
       query_id, message_type, finger_index, sent_msg, dest_addr, nth);
   out_req->input_id = id;
   out_req->node_id = node_id;
+
   return out_req;
 }
 
@@ -57,7 +58,7 @@ void free_outstanding_request(OutstandingRequest *req) {
     destroy_msg(req->sent_message);
   }
   if (req->dest_addr != NULL) {
-    
+
     free(req->dest_addr);
   }
   free(req);

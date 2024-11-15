@@ -48,7 +48,7 @@
 #define RETRANSMIT_TIMEOUT_SECS 10
 #define TRANSMISSION_ATTEMPTS 2
 #define MOD_M 64
-void printKey(uint64_t key) { printf("%" PRIu64, key); }
+void printKey(uint64_t key) { printf("%" PRIu64 "\n", key); }
 
 // Sets next timeout to the closest periodic update to come
 // Returns a flag for select to indicate what action (check, fix, stab) to do
@@ -125,7 +125,7 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                         (uint8_t *)&args->join_address.sin_addr.s_addr,
                         concatenation);
   struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-  uint8_t extended_key[20];
+  uint8_t extended_key[32];
   sha1sum_finish(ctx, concatenation,
                  sizeof(args->my_address.sin_addr) +
                      sizeof(args->my_address.sin_port),
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
 
   struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
   sha1sum_update(ctx, (void *)&localaddr.sin_port, 6);
-  uint8_t extended_key[20];
+  uint8_t extended_key[32];
   sha1sum_finish(ctx, (void *)&localaddr.sin_addr.s_addr,
                  sizeof(localaddr.sin_addr.s_addr), extended_key);
   uint64_t key = sha1sum_truncated_head(extended_key);
@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
 
     struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
     sha1sum_update(ctx, (void *)&args.join_address.sin_port, 6);
-    uint8_t extended_key[20];
+    uint8_t extended_key[32];
     sha1sum_finish(ctx, (void *)&args.join_address.sin_addr.s_addr,
                    sizeof(args.join_address.sin_addr.s_addr), extended_key);
     uint64_t newk = sha1sum_truncated_head(extended_key);
@@ -525,7 +525,7 @@ int main(int argc, char *argv[]) {
           memcpy(lookup_string, buf + lookup_length + 1, lookup_string_length);
           // Hash the string to get the key
           struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-          uint8_t extended_key[20];
+          uint8_t extended_key[32];
           sha1sum_finish(ctx, (uint8_t *)lookup_string, lookup_string_length,
                          extended_key);
           uint64_t truncated_key = sha1sum_truncated_head(extended_key);
@@ -645,14 +645,8 @@ int main(int argc, char *argv[]) {
             break;
           case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE: {
             OutstandingRequest *k;
-            int rq_index = 0;
-            for (k = request_queue->next; k != request_queue; k = k->next) {
-              if (k->query_id == msg->query_id) {
+            k = find_request_by_query_id(request_queue, msg->query_id);
 
-                break;
-              }
-              rq_index++;
-            }
             struct FindSuccessorResponse *ls = msg->find_successor_response;
 
             Node *g_pred = ls->node;
@@ -660,6 +654,12 @@ int main(int argc, char *argv[]) {
             uint64_t higher = g_pred->key;
             uint64_t mid = k->input_id;
             // we have not found the successor and need to send further
+            printf("HALL OF INFINNITE DEATH\n");
+            printf("%d\n", k->message_type);
+            printKey(lower);
+
+            printKey(mid);
+            printKey(higher);
             if (!(is_between_inclusive(lower, mid, higher))) {
               int qid = generate_query_id();
               ChordMessage *msg =
