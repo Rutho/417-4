@@ -287,6 +287,7 @@ int main(int argc, char *argv[]) {
   if (STDIN > ssock) {
     maxfd = STDIN;
   }
+
   struct sockaddr_in localaddr = args.my_address;
   int bval = bind(ssock, (struct sockaddr *)&localaddr, sizeof(localaddr));
 
@@ -381,8 +382,13 @@ int main(int argc, char *argv[]) {
   struct timeval next_stabilize_time;
   get_future_timestamp(&next_stabilize_time, args.stablize_period * 1E-1);
 
+  printf("> ");
+  fflush(stdout);
   while (1) {
     char user_input[MAX_BYTES];
+    FD_ZERO(&incoming);
+    FD_SET(ssock, &incoming);
+    FD_SET(STDIN, &incoming);
 
     // Iterate through local outstanding requests and handle them
     OutstandingRequest *curr_req = request_queue->next;
@@ -416,8 +422,10 @@ int main(int argc, char *argv[]) {
           printf("this is local huh\n");
           printf("< ");
           printf("%" PRIu64 " %s %u\n", curr_req->input_id, adr,
-                 ntohl(new_finger->port));
+                 ntohs(new_finger->port));
           delete_request_by_query_id(request_queue, curr_req->query_id);
+          printf("> ");
+          fflush(stdout);
         }
         default:
           break;
@@ -461,6 +469,7 @@ int main(int argc, char *argv[]) {
     }
 
     int s_turn = select(maxfd + 1, &incoming, NULL, NULL, &timeout);
+
     if (s_turn == -1) {
       perror("select:");
       exit(1);
@@ -515,23 +524,22 @@ int main(int argc, char *argv[]) {
         int lookup_length = 6;
         int printstate_length = 10;
         char buf[101];
-        printf("> ");
         int num_bytes = read(STDIN, buf, 100);
-        printf("\n");
+        //Read takes in the \n character at the end of stdin. This replaces it with the null terminator
+        buf[num_bytes - 1] = '\x00';
         if (strncmp("Lookup", buf, lookup_length) == 0) {
-          char *lookup_string = (char *)malloc(num_bytes - lookup_length);
+          char *lookup_string = (char *)malloc(num_bytes - lookup_length + 1);
           //+1 and -1 to account for space between lookup and string
           int lookup_string_length = num_bytes - lookup_length - 1;
           memcpy(lookup_string, buf + lookup_length + 1, lookup_string_length);
+          lookup_string[lookup_length] = '\x00';
           // Hash the string to get the key
           struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
           uint8_t extended_key[32];
           sha1sum_finish(ctx, (uint8_t *)lookup_string, lookup_string_length,
                          extended_key);
           uint64_t truncated_key = sha1sum_truncated_head(extended_key);
-          printf("< %s", lookup_string);
-          printKey(truncated_key);
-          printf("\n");
+          printf("< %s %" PRIu64 "\n", lookup_string, truncated_key);
           printf("THIS IS  THE HASH\n");
           printf("%lu\n", truncated_key);
 
@@ -543,7 +551,7 @@ int main(int argc, char *argv[]) {
         } else if (strncmp("PrintState", buf, printstate_length) == 0) {
           char adr[INET_ADDRSTRLEN];
           inet_ntop(AF_INET, &localaddr.sin_addr.s_addr, adr, sizeof(adr));
-          int por = ntohl(localaddr.sin_port);
+          int por = ntohs(localaddr.sin_port);
           printf("< Self %lu %s %u\n", key, adr, por);
           Entry *k;
           int pos = 1;
@@ -551,7 +559,7 @@ int main(int argc, char *argv[]) {
           for (k = successor_list->next; k != successor_list; k = k->next) {
             char adr[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &k->address, adr, sizeof(adr));
-            int por = ntohl(k->port);
+            int por = ntohs(k->port);
             printf("< Successor [%u] %lu %s %u\n", pos, k->key, adr, por);
             pos++;
           }
@@ -559,7 +567,7 @@ int main(int argc, char *argv[]) {
           for (k = finger_table->next; k != finger_table; k = k->next) {
             char adr[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &k->address, adr, sizeof(adr));
-            int por = ntohl(k->port);
+            int por = ntohs(k->port);
             printf("< Finger [%u] %lu %s %u\n", pos, k->key, adr, por);
             pos++;
           }

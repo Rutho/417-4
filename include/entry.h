@@ -13,7 +13,7 @@ struct Entry {
   Entry *prev;
   uint64_t key;
   uint64_t address;
-  uint32_t port;
+  uint16_t port;
 };
 void get_successor_list_send(struct sockaddr *dest_addr, int sock, int suc_id,
                              OutstandingRequest *request_queue, Msg_Type M);

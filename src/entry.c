@@ -101,8 +101,8 @@ Entry *init_entry(uint64_t key, struct sockaddr *address) {
   Entry *entry = (Entry *)malloc(sizeof(Entry));
   struct sockaddr_in tmp = *(struct sockaddr_in *)address;
   entry->key = key;
-  entry->address = ntohl(tmp.sin_addr.s_addr);
-  entry->port = ntohl(tmp.sin_port);
+  entry->address = tmp.sin_addr.s_addr;
+  entry->port = tmp.sin_port;
   return entry;
 }
 
