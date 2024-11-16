@@ -93,7 +93,9 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
 int request_timed_out(OutstandingRequest *req, double retransmission_timeout,
                       int n_transmissions) {
   // Local request can't timeout
+  printf("%d\n", req->query_id);
   if (req->query_id == -1) {
+    printf("local\n");
     return 0;
   }
   if (get_time_diff_now_secs(&req->start_time) >= retransmission_timeout) {
@@ -120,7 +122,6 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                          Entry *finger_table, Entry *successor_list,
                          Entry **predecessor, struct chord_arguments *args,
                          OutstandingRequest *request_queue, uint64_t newk) {
-
   // If we delete something, we know that the best predecessors has
   // shifted once. For example, the 2nd best predecessor is now best predecessor
   // if we deleted the best predecessor. If we don't delete anything, we know we
@@ -401,6 +402,7 @@ int main(int argc, char *argv[]) {
               find_entry_at_index(finger_table, curr_req->finger_index);
           Entry *new_finger =
               find_entry_by_key(successor_list, curr_req->node_id);
+          printf("node_id: %" PRIu64 "\n", new_finger->key);
           // First ever time finger table has expanded to this size.
           if (old_finger == NULL) {
             old_finger = push_entry(finger_table, new_finger);
@@ -619,7 +621,7 @@ int main(int argc, char *argv[]) {
                   find_closest_predecessor_entry(finger_table, req_key);
               Entry *best_successor_predecessor =
                   find_closest_predecessor_entry(successor_list, req_key);
-              if (best_finger_predecessor->key == key ||
+              if (best_finger_predecessor->key == 0 ||
                   is_between_exclusive(best_finger_predecessor->key,
                                        best_successor_predecessor->key,
                                        req_key)) {
@@ -746,6 +748,7 @@ int main(int argc, char *argv[]) {
                 break;
               }
             }
+            delete_request_by_query_id(request_queue, k->query_id);
             break;
           }
           case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE: {
@@ -790,7 +793,6 @@ int main(int argc, char *argv[]) {
               tmp.port = rsp->successors[i]->address;
               tmp.address = rsp->successors[i]->address;
               push_entry(successor_list, &tmp);
-              free(&tmp);
             }
           } break;
           case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {

@@ -24,7 +24,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
 
   // Entry *k;
   Entry *successor;
-  successor = finger_list->next;
+  successor = successor_list->next;
 
   uint64_t higher = successor->key;
 
@@ -78,11 +78,12 @@ Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
   uint64_t upper = id;
   for (int i = 0; i < nth_closest_predecessor; i++) {
     for (k = finger_list->next; k != finger_list; k = k->next) {
-
+      
       if (is_between_exclusive(lower, k->key, upper) &&
           is_between_exclusive(lower, k->key, ret->key)) {
-        ret = k;
-        break;
+        if (k->key != 0) {
+          ret = k;
+        }
       }
     }
     Entry *j;

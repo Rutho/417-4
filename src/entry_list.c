@@ -72,7 +72,9 @@ Entry *push_entry(Entry *head, Entry *new_entry) {
   }
 
   Entry *new_entry_copy = malloc(sizeof(Entry));
-  memcpy(new_entry_copy, new_entry, sizeof(Entry));
+  new_entry_copy->address = new_entry->address;
+  new_entry_copy->key = new_entry->key;
+  new_entry_copy->port = new_entry->port;
   new_entry_copy->next = curr->next;
   new_entry_copy->prev = curr;
   curr->next->prev = new_entry_copy;
@@ -151,7 +153,7 @@ void wipe_entry_list(Entry *head) {
 }
 // Finds entry at given index of entry list
 // returns the entry at the given index
-// Note that if index >= size, it will return last entry
+// Note that if index >= size, it will return NULL
 Entry *find_entry_at_index(Entry *head, int index) {
   if (index >= entry_list_size(head)) {
     return NULL;
