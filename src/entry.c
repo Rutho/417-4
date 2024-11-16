@@ -78,7 +78,7 @@ Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
   uint64_t upper = id;
   for (int i = 0; i < nth_closest_predecessor; i++) {
     for (k = finger_list->next; k != finger_list; k = k->next) {
-      
+
       if (is_between_exclusive(lower, k->key, upper) &&
           is_between_exclusive(lower, k->key, ret->key)) {
         if (k->key != 0) {
@@ -164,11 +164,17 @@ void fix_finger_find_successor_request_send(
 void handle_fix_fingers_find_successor_response(Entry *finger_table,
                                                 int finger_index,
                                                 Entry *resp_node) {
-  Entry *entry = find_entry_at_index(finger_table, finger_index);
 
-  entry->address = resp_node->address;
-  entry->port = resp_node->port;
-  entry->key = resp_node->key;
+  if (finger_index >= entry_list_size(finger_table)) {
+
+    push_entry(finger_table, resp_node);
+  } else {
+    Entry *entry = find_entry_at_index(finger_table, finger_index);
+
+    entry->address = resp_node->address;
+    entry->port = resp_node->port;
+    entry->key = resp_node->key;
+  }
 }
 
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,
