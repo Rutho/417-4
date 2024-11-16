@@ -20,7 +20,7 @@ void get_successor_list_send(struct sockaddr *dest_addr, int sock, int suc_id,
 void send_notif(Entry *client, uint64_t id, uint64_t rev_id,
                 struct sockaddr *join_addr, int sock,
                 OutstandingRequest *request_queue);
-void user_lookup_send(Entry *client, uint64_t id, uint64_t rev_id,
+void user_lookup_send(uint64_t id, uint64_t rev_id,
                       struct sockaddr *join_addr, int sock,
                       OutstandingRequest *request_queue,
                       int nth_closest_predecessor);
@@ -32,12 +32,12 @@ Entry *closest_preceding_node(Entry client, uint64_t id, Entry *finger_list,
                               Entry *successor_list,
                               int nth_closest_predecessor);
 Entry *init_entry(uint64_t key, struct sockaddr *address);
-void join_chord_ring_send(Entry *client, uint64_t id, uint64_t rev_id,
+void join_chord_ring_send(uint64_t id, uint64_t rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue,
                           int nth_closest_predecessor);
 void fix_finger_find_successor_request_send(
-    Entry *client, uint64_t id, uint64_t rev_id, struct sockaddr *join_addr,
+    uint64_t id, uint64_t rev_id, struct sockaddr *join_addr,
     int sock, OutstandingRequest *request_queue, int index,
     int nth_closest_predecessor);
 void check_predecessor_send(Entry *client, struct sockaddr *dest_addr, int sock,

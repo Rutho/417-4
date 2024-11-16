@@ -28,7 +28,6 @@ int generate_query_id() {
 // Sends the given ChordMessage to the given socket
 int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   // only used to determine size of the 'len' field
-  Message msg;
 
   uint64_t chord_msg_len = chord_message__get_packed_size(chord_msg);
   size_t buf_size = sizeof(uint64_t) + chord_msg_len;
@@ -40,8 +39,6 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   memcpy(msg_buf, &chord_msg_len, sizeof(uint64_t));
   chord_message__pack(chord_msg, msg_buf + sizeof(uint64_t));
   sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
-  ChordMessage *new = chord_message__unpack(NULL, buf_size - sizeof(uint64_t),
-                                            msg_buf + sizeof(uint64_t));
 
   free(msg_buf);
   return chord_msg->query_id;
@@ -58,7 +55,7 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
   msg_size = be64toh(msg_size);
 
   void *buffr = malloc(msg_size + sizeof(uint64_t));
-  int k = recvfrom(sock, buffr, msg_size + sizeof(uint64_t), 0, info, &len);
+  recvfrom(sock, buffr, msg_size + sizeof(uint64_t), 0, info, &len);
 
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));

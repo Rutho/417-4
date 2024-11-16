@@ -46,7 +46,7 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
     switch (M) {
 
     case join_find_successor: {
-      join_chord_ring_send(&client, id, preced->key, (struct sockaddr *)&tmp,
+      join_chord_ring_send(id, preced->key, (struct sockaddr *)&tmp,
 
                            sock, request_queue, nth_closest_predecessor);
 
@@ -54,12 +54,12 @@ void find_successor(Entry client, uint64_t id, Entry *finger_list,
     case fix_fingers_find_successor: {
 
       fix_finger_find_successor_request_send(
-          &client, id, preced->key, (struct sockaddr *)&tmp, sock,
+          id, preced->key, (struct sockaddr *)&tmp, sock,
 
           request_queue, index, nth_closest_predecessor);
     } break;
     case user_lookup: {
-      user_lookup_send(&client, id, preced->key, (struct sockaddr *)&tmp, sock,
+      user_lookup_send(id, preced->key, (struct sockaddr *)&tmp, sock,
                        request_queue, nth_closest_predecessor);
     }
     default:
@@ -110,7 +110,7 @@ Entry *init_entry(uint64_t key, struct sockaddr *address) {
   return entry;
 }
 
-void user_lookup_send(Entry *client, uint64_t id, uint64_t rev_id,
+void user_lookup_send(uint64_t id, uint64_t rev_id,
                       struct sockaddr *join_addr, int sock,
                       OutstandingRequest *request_queue,
                       int nth_closest_predecessor) {
@@ -134,7 +134,7 @@ void send_notif(Entry *client, uint64_t id, uint64_t rev_id,
   push_request(request_queue, new_req);
 }
 // i am doing iterative so we send out requests for finger lists;;.
-void join_chord_ring_send(Entry *client, uint64_t id, uint64_t rev_id,
+void join_chord_ring_send(uint64_t id, uint64_t rev_id,
                           struct sockaddr *join_addr, int sock,
                           OutstandingRequest *request_queue,
                           int nth_closest_predecessor) {
@@ -146,11 +146,10 @@ void join_chord_ring_send(Entry *client, uint64_t id, uint64_t rev_id,
       nth_closest_predecessor);
 
   push_request(request_queue, new_req);
-  printf("join query_id msg: %d\n", new_req->query_id);
 }
 
 void fix_finger_find_successor_request_send(
-    Entry *client, uint64_t id, uint64_t rev_id, struct sockaddr *join_addr,
+    uint64_t id, uint64_t rev_id, struct sockaddr *join_addr,
     int sock, OutstandingRequest *request_queue, int index,
     int nth_closest_predecessor) {
   ChordMessage *msg = construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST,
@@ -213,7 +212,6 @@ void get_successor_list_send(struct sockaddr *dest_addr, int sock, int suc_id,
       query_id, M, -1, -1, suc_id, temp, dest_addr, 1);
   push_request(request_queue, new_req);
 }
-void handle_stabilize_predecessor_response(Entry *predecessor) {}
 
 int is_between_inclusive(uint64_t lower, uint64_t id, uint64_t higher) {
 

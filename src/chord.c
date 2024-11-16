@@ -45,8 +45,8 @@
 
 #define STDIN 0
 #define MAX_BYTES 50
-#define RETRANSMIT_TIMEOUT_SECS 2
-#define TRANSMISSION_ATTEMPTS 2
+#define RETRANSMIT_TIMEOUT_SECS 5
+#define TRANSMISSION_ATTEMPTS 3
 #define MOD_M 64
 void printKey(uint64_t key) { printf("%" PRIu64 "\n", key); }
 
@@ -93,9 +93,7 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
 int request_timed_out(OutstandingRequest *req, double retransmission_timeout,
                       int n_transmissions) {
   // Local request can't timeout
-  printf("%d\n", req->query_id);
   if (req->query_id == -1) {
-    printf("local\n");
     return 0;
   }
   if (get_time_diff_now_secs(&req->start_time) >= retransmission_timeout) {
@@ -120,7 +118,7 @@ void retransmit_request(OutstandingRequest *req, int sock) {
 // fill the gap?
 void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                          Entry *finger_table, Entry *successor_list,
-                         Entry **predecessor, struct chord_arguments *args,
+                         Entry **predecessor,
                          OutstandingRequest *request_queue, uint64_t newk) {
   // If we delete something, we know that the best predecessors has
   // shifted once. For example, the 2nd best predecessor is now best predecessor
@@ -240,7 +238,6 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
     // TODO: DETERMINE WHICH MSG_CASE TO SEND.
     // SENDING NOTIFY IS SAFER THAN SENDING GET_PRED
     // there should be no difference
-    int qid = generate_query_id();
     send_notif(client, -1, entry->key, (struct sockaddr *)&new_successor_addr,
                sock, request_queue);
     delete_request(request_queue, req);
@@ -306,10 +303,7 @@ int main(int argc, char *argv[]) {
   int customid = 0;
   for (int i = 0; i < argc; i++) {
 
-    printf("%s\n", argv[i]);
-
     if (strcmp(argv[i], "--ja") == 0) {
-      printf("study the blade\n");
       adrprov = 1;
     }
     if (strcmp(argv[i], "-i") == 0) {
@@ -363,7 +357,7 @@ int main(int argc, char *argv[]) {
     uint64_t newk = sha1sum_truncated_head(extended_key);
     sha1sum_reset(ctx);
     sha1sum_destroy(ctx);
-    join_chord_ring_send(client, key, newk,
+    join_chord_ring_send(key, newk,
                          (struct sockaddr *)&args.join_address, ssock,
                          request_queue, 1);
   }
@@ -382,7 +376,6 @@ int main(int argc, char *argv[]) {
   printf("> ");
   fflush(stdout);
   while (1) {
-    char user_input[MAX_BYTES];
     FD_ZERO(&incoming);
     FD_SET(ssock, &incoming);
     FD_SET(STDIN, &incoming);
@@ -397,12 +390,10 @@ int main(int argc, char *argv[]) {
         switch (curr_req->message_type) {
         // we dont need a case for it being local the -1 already makes it local.
         case fix_fingers_find_successor: {
-          printf("curr_req->finger_index: %d\n", curr_req->finger_index);
           Entry *old_finger =
               find_entry_at_index(finger_table, curr_req->finger_index);
           Entry *new_finger =
               find_entry_by_key(successor_list, curr_req->node_id);
-          printf("node_id: %" PRIu64 "\n", new_finger->key);
           // First ever time finger table has expanded to this size.
           if (old_finger == NULL) {
             old_finger = push_entry(finger_table, new_finger);
@@ -457,7 +448,7 @@ int main(int argc, char *argv[]) {
       // Timed out and out of retransmission attempts
       case 2:
         handle_node_failure(ssock, client, curr_req, finger_table,
-                            successor_list, &predecessor, &args, request_queue, key);
+                            successor_list, &predecessor, request_queue, key);
         break;
       }
     }
@@ -509,7 +500,6 @@ int main(int argc, char *argv[]) {
                        finger_table, successor_list, request_queue,
                        fix_fingers_find_successor, fix_finger_index, ssock, 1);
         get_future_timestamp(&next_fix_fingers_time, args.fix_fingers_period * 1E-1);
-        printf("time_secs: %d, arg: %d\n", next_fix_fingers_time.tv_sec, args.fix_fingers_period * 1E-1);
         break;
       case STABILIZE:
 
@@ -630,7 +620,6 @@ int main(int argc, char *argv[]) {
                 will_send = best_finger_predecessor;
               }
             }
-            printf("query_id of message: %d\n", msg->query_id);
             ChordMessage *sending =
                 construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE,
                               req_key, msg->query_id, will_send);
@@ -729,7 +718,6 @@ int main(int argc, char *argv[]) {
                     finger_table, k->finger_index, pred);
               } break;
               case (join_find_successor): {
-                printf("join\n");
                 push_entry(finger_table, pred);
                 push_entry(successor_list, pred);
                 free(pred);
