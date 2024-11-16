@@ -64,7 +64,6 @@ OutstandingRequest *find_request_by_query_id(OutstandingRequest *queue,
                                              int query_id) {
   OutstandingRequest *curr_req = queue->next;
   while (curr_req != queue) {
-
     if (curr_req->query_id == query_id) {
       return curr_req;
     }

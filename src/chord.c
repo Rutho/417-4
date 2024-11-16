@@ -407,14 +407,15 @@ int main(int argc, char *argv[]) {
               find_entry_by_key(successor_list, curr_req->node_id);
           //First ever time finger table has expanded to this size.
           if (old_finger == NULL) {
-            old_finger = push(finger_table, new_finger);
+            old_finger = push_entry(finger_table, new_finger);
+          } else {
+            update_entry(old_finger, new_finger->key, new_finger->address, new_finger->port);
           }
-          update_entry(old_finger, new_finger->key, new_finger->address, new_finger->port);
           // If we don't find a match, we might be misusing local requests.
 
           update_entry(old_finger, new_finger->key, new_finger->address,
                        new_finger->port);
-          delete_request_by_query_id(request_queue, curr_req->query_id);
+          delete_request(request_queue, curr_req);
         } break;
         case join_find_successor: {
           // this should never happen but is handled
@@ -430,7 +431,7 @@ int main(int argc, char *argv[]) {
           printf("< ");
           printf("%" PRIu64 " %s %u\n", curr_req->input_id, adr,
                  ntohs(new_finger->port));
-          delete_request_by_query_id(request_queue, curr_req->query_id);
+          delete_request(request_queue, curr_req);
           printf("> ");
           fflush(stdout);
         }
@@ -467,7 +468,6 @@ int main(int argc, char *argv[]) {
                      &next_stabilize_time, &timeout);
 
     FD_ZERO(&incoming);
-
     FD_SET(ssock, &incoming);
     maxfd = ssock;
     FD_SET(STDIN, &incoming);
@@ -623,7 +623,7 @@ int main(int argc, char *argv[]) {
                 will_send = best_finger_predecessor;
               }
             }
-
+            printf("query_id of message: %d\n", msg->query_id);
             ChordMessage *sending =
                 construct_msg(CHORD_MESSAGE__MSG_FIND_SUCCESSOR_RESPONSE,
                               req_key, msg->query_id, will_send);
@@ -688,8 +688,8 @@ int main(int argc, char *argv[]) {
                                 k->input_id, qid, NULL);
 
               struct sockaddr_in tmp;
-              tmp.sin_port = htonl(g_pred->port);
-              tmp.sin_addr.s_addr = htonl(g_pred->address);
+              tmp.sin_port = g_pred->port;
+              tmp.sin_addr.s_addr = g_pred->address;
               tmp.sin_family = AF_INET;
               send_message(msg, ssock, (struct sockaddr *)&tmp);
               OutstandingRequest *new_req =
@@ -697,7 +697,7 @@ int main(int argc, char *argv[]) {
                       qid, k->message_type, k->finger_index, k->input_id,
                       higher, msg, (struct sockaddr *)&tmp, 1);
               push_request(request_queue, new_req);
-              delete_request_by_query_id(request_queue, msg->query_id);
+              delete_request_by_query_id(request_queue, k->query_id);
 
               // push_entry(request_queue,new_req);
               // delete_entry_at_index(request_queue,rq_index);

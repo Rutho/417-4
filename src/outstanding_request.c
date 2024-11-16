@@ -27,7 +27,7 @@ construct_outstanding_request(int query_id, Msg_Type message_type,
     out_req->sent_message = sent_msg;
   }
   if (dest_addr != NULL) {
-
+    
     struct sockaddr_in *demp = malloc(sizeof(struct sockaddr));
     struct sockaddr_in *memp = (struct sockaddr_in *)dest_addr;
     demp->sin_family = AF_INET;

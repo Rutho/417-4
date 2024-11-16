@@ -100,7 +100,7 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
     }
       */
 
-    if (0 /*string is an invalid identification*/) {
+    if (!atoi(arg)) {
       argp_error(state, "Invalid ID");
     } else {
       args->id = (uint64_t)strtoull(arg, NULL, 10);

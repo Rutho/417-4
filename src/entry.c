@@ -145,6 +145,7 @@ void join_chord_ring_send(Entry *client, uint64_t id, uint64_t rev_id,
       nth_closest_predecessor);
 
   push_request(request_queue, new_req);
+  printf("join query_id msg: %d\n", new_req->query_id);
 }
 
 void fix_finger_find_successor_request_send(
