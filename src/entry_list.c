@@ -115,11 +115,16 @@ int delete_entry_at_index(Entry *head, int index) {
 // Otherwise, return 0
 int delete_entries_by_key(Entry *head, uint64_t key, int replace_with_null) {
   Entry *curr = head->next;
+  Entry *incrm = curr;
   int deleted_smth = 0;
-  while (curr != head) {
-    if (curr->key == key) {
+  while (incrm != head) {
+    curr = incrm;
+    incrm = incrm->next;
+    if (curr->key == key && curr->key != head->key) {
       if (replace_with_null) {
-        curr->key = NULL;
+        curr->key = 0;
+        curr->port = 0;
+        curr->address = 0;
       } else {
         curr->prev->next = curr->next;
         curr->next->prev = curr->prev;
@@ -127,7 +132,6 @@ int delete_entries_by_key(Entry *head, uint64_t key, int replace_with_null) {
       }
       deleted_smth = 1;
     }
-    curr = curr->next;
   }
 
   return deleted_smth;
@@ -164,7 +168,7 @@ Entry *find_entry_at_index(Entry *head, int index) {
 Entry *find_entry_by_key(Entry *head, uint64_t key) {
   Entry *curr = head->next;
   while (curr != head) {
-    if (curr->key != NULL && curr->key == key) {
+    if (curr->key != head->key && curr->key == key) {
       return curr;
     }
     curr = curr->next;
@@ -183,7 +187,8 @@ Entry *find_closest_predecessor_entry(Entry *head, uint64_t id) {
   Entry *closest_predecessor = head->next;
   Entry *curr = head->next;
   while (curr->next != head) {
-    if (curr->key != NULL && is_between_exclusive(closest_predecessor->key, curr->key, id)) {
+    if (curr->key != head->key &&
+        is_between_exclusive(closest_predecessor->key, curr->key, id)) {
       closest_predecessor = curr;
     }
     curr = curr->next;

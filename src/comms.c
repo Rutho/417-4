@@ -20,7 +20,9 @@ int generate_query_id() {
 
   struct timeval temp;
   get_timeval_now(&temp);
-  return (int)(((uint32_t)temp.tv_usec + (uint32_t)temp.tv_sec) % INT32_MAX);
+  int idu = (int)(((uint32_t)temp.tv_usec + (uint32_t)temp.tv_sec) % INT32_MAX);
+
+  return idu;
 }
 
 // Sends the given ChordMessage to the given socket
