@@ -75,8 +75,7 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
   struct timeval now;
   get_timeval_now(&now);
   double time_to_next_action = get_time_diff_secs(next_action_timeval, &now);
-  printf("timeout_to_next: %d\n", time_to_next_action);
-  if (time_to_next_action < 0) {
+  if (time_to_next_action <= 0) {
     timeout->tv_sec = 0;
     timeout->tv_usec = 0;
   } else {
@@ -120,20 +119,7 @@ void retransmit_request(OutstandingRequest *req, int sock) {
 void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                          Entry *finger_table, Entry *successor_list,
                          Entry **predecessor, struct chord_arguments *args,
-                         OutstandingRequest *request_queue) {
-  uint8_t *concatenation;
-  
-  concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
-                        (uint8_t *)&args->join_address.sin_addr.s_addr,
-                        concatenation);
-  struct sha1sum_ctx *ctx = sha1sum_create(NULL, 0);
-  uint8_t extended_key[32];
-  sha1sum_finish(ctx, concatenation,
-                 sizeof(args->my_address.sin_addr) +
-                     sizeof(args->my_address.sin_port),
-                 extended_key);
-  uint64_t newk = sha1sum_truncated_head(extended_key);
-  sha1sum_reset(ctx);
+                         OutstandingRequest *request_queue, uint64_t newk) {
 
   // If we delete something, we know that the best predecessors has
   // shifted once. For example, the 2nd best predecessor is now best predecessor
@@ -440,8 +426,7 @@ int main(int argc, char *argv[]) {
           inet_ntop(AF_INET, &new_finger->address, adr, sizeof(adr));
           printf("< ");
           printf("%" PRIu64 " %s %u\n", curr_req->node_id, adr,
-          printf("%" PRIu64 " %s %u\n", curr_req->node_id, adr,
-                 ntohs(new_finger->port));
+                ntohs(new_finger->port));
           delete_request(request_queue, curr_req);
           printf("> ");
           fflush(stdout);
@@ -470,7 +455,7 @@ int main(int argc, char *argv[]) {
       // Timed out and out of retransmission attempts
       case 2:
         handle_node_failure(ssock, client, curr_req, finger_table,
-                            successor_list, &predecessor, &args, request_queue);
+                            successor_list, &predecessor, &args, request_queue, key);
         break;
       }
     }
@@ -479,7 +464,6 @@ int main(int argc, char *argv[]) {
     int next_periodic_update_flag =
         next_timeout(&next_check_pred_time, &next_fix_fingers_time,
                      &next_stabilize_time, &timeout);
-
     FD_ZERO(&incoming);
     FD_SET(ssock, &incoming);
     maxfd = ssock;
@@ -515,11 +499,11 @@ int main(int argc, char *argv[]) {
 
         // find_successor will require a finger_index
         fix_finger_index++;
-        if (fix_finger_index > MOD_M) {
-          fix_finger_index = 1;
+        if (fix_finger_index >= MOD_M) {
+          fix_finger_index = 0;
         }
         find_successor(*client,
-                       client->key + ((int)pow(2, (fix_finger_index - 1))),
+                       client->key + ((int)pow(2, (fix_finger_index))),
                        finger_table, successor_list, request_queue,
                        fix_fingers_find_successor, fix_finger_index, ssock, 1);
         get_future_timestamp(&next_fix_fingers_time, args.fix_fingers_period * 1E-1);
