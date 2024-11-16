@@ -143,7 +143,7 @@ void join_chord_ring_send(Entry *client, uint64_t id, uint64_t rev_id,
   OutstandingRequest *new_req = construct_outstanding_request_with_id(
       query_id, join_find_successor, -1, id, rev_id, msg, join_addr,
       nth_closest_predecessor);
-  printf("real and funk %d %d\n", query_id, msg->query_id);
+
   push_request(request_queue, new_req);
 }
 

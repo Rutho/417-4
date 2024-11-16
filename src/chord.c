@@ -198,7 +198,7 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
         generate_query_id(), get_pred, -1, req->sent_message,
         (struct sockaddr *)&new_successor_addr, 1);
     push_request(request_queue, new_req);
-    free(new_req);
+
     delete_request(request_queue, req);
   } break;
   case user_lookup:
@@ -236,7 +236,7 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
         generate_query_id(), get_pred, -1, req->sent_message,
         (struct sockaddr *)&new_successor_addr, 1);
     push_request(request_queue, new_req);
-    free(new_req);
+
     delete_request(request_queue, req);
   } break;
   case stablize_get_successor_list: {
@@ -525,7 +525,7 @@ int main(int argc, char *argv[]) {
     } else {
 
       if (FD_ISSET(STDIN, &incoming)) {
-        printf("USER INPUT GET RIGHT HERE\n");
+
         // TODO: Determine max length of string. For now, assume 100 is enough
         int lookup_length = 6;
         int printstate_length = 10;
@@ -586,9 +586,9 @@ int main(int argc, char *argv[]) {
       }
       if (FD_ISSET(ssock, &incoming)) {
         struct sockaddr src_addr;
-        printf("i think its recv mssage\n");
+
         ChordMessage *msg = recv_message(ssock, &src_addr);
-        printf("i got a msg\n");
+
         // cases to handle requests
         switch (msg->msg_case) {
         case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
@@ -598,7 +598,7 @@ int main(int argc, char *argv[]) {
           send_message(msg_send, ssock, &src_addr);
         } break;
         case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST:
-          printf("A NODE CONTACTED ME!!!!\n");
+
           // Might need a separate Msg_Type for the case where find_successor
           // is called bcs of a find_successor request
           /*find_successor()*/
@@ -629,7 +629,7 @@ int main(int argc, char *argv[]) {
         } break;
 
         case CHORD_MESSAGE__MSG_NOTIFY_REQUEST: {
-          printf("inside notif\n");
+
           struct NotifyRequest *ls = msg->notify_request;
           Node *tmp = ls->node;
           if (predecessor == NULL ||
@@ -675,11 +675,6 @@ int main(int argc, char *argv[]) {
             uint64_t mid = k->input_id;
             // we have not found the successor and need to send further
 
-            printKey(lower);
-
-            printKey(mid);
-            printKey(higher);
-
             if (!(is_between_inclusive(lower, mid, higher))) {
               int qid = generate_query_id();
               ChordMessage *msg =
@@ -697,7 +692,7 @@ int main(int argc, char *argv[]) {
                       higher, msg, (struct sockaddr *)&tmp, 1);
               push_request(request_queue, new_req);
               delete_request_by_query_id(request_queue, msg->query_id);
-              free_outstanding_request(new_req);
+
               // push_entry(request_queue,new_req);
               // delete_entry_at_index(request_queue,rq_index);
               // free_request(k);
@@ -722,14 +717,14 @@ int main(int argc, char *argv[]) {
 
                 push_entry(finger_table, pred);
                 push_entry(successor_list, pred);
-
+                free(pred);
                 break;
               }
               case (user_lookup): {
 
                 char adr[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &g_pred->address, adr, sizeof(adr));
-                printf("the magic arts\n");
+
                 printf("< ");
                 printf("%" PRIu64 " %s %u\n", pred->key, adr, g_pred->port);
                 break;

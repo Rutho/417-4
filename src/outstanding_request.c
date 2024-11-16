@@ -1,6 +1,7 @@
 #include "../include/outstanding_request.h"
 #include "../include/comms.h"
 #include "../include/time_utils.h"
+#include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -19,17 +20,20 @@ construct_outstanding_request(int query_id, Msg_Type message_type,
   out_req->next = out_req->prev = out_req;
   out_req->input_id = -1;
   out_req->node_id = -1;
+  out_req->sent_message = NULL;
+  out_req->dest_addr = NULL;
 
-  out_req->sent_message = sent_msg;
-  if (sent_msg) {
-    out_req->sent_message =
-        (struct ChordMessage *)malloc(chord_message__get_packed_size(sent_msg));
-    memcpy(out_req->sent_message, sent_msg,
-           chord_message__get_packed_size(sent_msg));
+  if (sent_msg != NULL) {
+    out_req->sent_message = sent_msg;
   }
-  if (dest_addr) {
-    out_req->dest_addr = (struct sockaddr *)malloc(sizeof(struct sockaddr));
-    memcpy(out_req->dest_addr, dest_addr, sizeof(struct sockaddr));
+  if (dest_addr != NULL) {
+
+    struct sockaddr_in *demp = malloc(sizeof(struct sockaddr));
+    struct sockaddr_in *memp = (struct sockaddr_in *)dest_addr;
+    demp->sin_family = AF_INET;
+    demp->sin_port = memp->sin_port;
+    demp->sin_addr.s_addr = memp->sin_addr.s_addr;
+    out_req->dest_addr = (struct sockaddr *)demp;
   }
   // not declared?
   get_timeval_now(&(out_req->start_time));

@@ -17,10 +17,10 @@
 #include <time.h>
 
 int generate_query_id() {
-  
+
   struct timeval temp;
   get_timeval_now(&temp);
-  return (int)(((uint32_t) temp.tv_usec + (uint32_t) temp.tv_sec) % INT32_MAX);
+  return (int)(((uint32_t)temp.tv_usec + (uint32_t)temp.tv_sec) % INT32_MAX);
 }
 
 // Sends the given ChordMessage to the given socket
@@ -31,15 +31,16 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   uint64_t chord_msg_len = chord_message__get_packed_size(chord_msg);
   size_t buf_size = sizeof(uint64_t) + chord_msg_len;
   void *msg_buf = malloc(buf_size);
-  printf("WHAT IS THE SIZE OF WHAT I SEND  %lu\n", chord_msg_len);
+
   chord_msg_len = htobe64(chord_msg_len);
   // I set struct sockaddr_in address;ing msg.len = chord_msg_len (so excludes
   // the size of the len field itself)
   memcpy(msg_buf, &chord_msg_len, sizeof(uint64_t));
   chord_message__pack(chord_msg, msg_buf + sizeof(uint64_t));
   sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
-  ChordMessage *new = chord_message__unpack(NULL, buf_size - sizeof(uint64_t), msg_buf + sizeof(uint64_t));
-  printf("sent query id: %d\n",new->query_id);
+  ChordMessage *new = chord_message__unpack(NULL, buf_size - sizeof(uint64_t),
+                                            msg_buf + sizeof(uint64_t));
+
   free(msg_buf);
   return chord_msg->query_id;
 }
@@ -53,14 +54,13 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
 
   recvfrom(sock, &msg_size, sizeof(msg_size), MSG_PEEK, info, &len);
   msg_size = be64toh(msg_size);
-  printf("THE SIZE OF MSG TO BE RECIVED %lu\n", msg_size);
 
   void *buffr = malloc(msg_size + sizeof(uint64_t));
   int k = recvfrom(sock, buffr, msg_size + sizeof(uint64_t), 0, info, &len);
-  printf("actual size received: %d\n", k);
+
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));
-  printf("%d\n", recvd_chord_msg->query_id);
+
   free(buffr);
   return recvd_chord_msg;
 }
@@ -235,16 +235,20 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     get_successor_list_response__init(rsp);
 
     rsp->n_successors = entry_list_size(successor_list);
-    rsp->successors = malloc(sizeof(Entry) * rsp->n_successors);
+    rsp->successors = malloc(sizeof(Node *) * rsp->n_successors);
     Entry *curr_successor = successor_list->next;
     for (int i = 0; (unsigned)i < rsp->n_successors; i++) {
-      rsp->successors[i]->key = curr_successor->key;
-      rsp->successors[i]->address = curr_successor->address;
-      rsp->successors[i]->port = curr_successor->port;
+      Node *tempo = malloc(sizeof(Node));
+      node__init(tempo);
+      tempo->key = curr_successor->key;
+      tempo->address = curr_successor->address;
+      tempo->port = curr_successor->port;
+      rsp->successors[i] = tempo;
     }
     cloak->get_successor_list_response = rsp;
     cloak->query_id = qid;
     cloak->has_query_id = 1;
+
     cloak->msg_case = CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE;
     ret = cloak;
   } break;
@@ -254,7 +258,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
   return ret;
 }
 
-// 0 for correct, -1 for error
+// 0 for correct, -1 for error:warn("u);
 int destroy_msg(ChordMessage *msg) {
 
   // chord_message__free_unpacked(msg,NULL);
@@ -315,7 +319,11 @@ int destroy_msg(ChordMessage *msg) {
   } break;
   case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
     // successor_list does not exist need optional argument.
-
+    //
+    GetSuccessorListResponse *rsp = msg->get_successor_list_response;
+    for (int i = 0; (unsigned)i < rsp->n_successors; i++) {
+      free(rsp->successors[i]);
+    }
     free(msg->get_successor_list_response->successors);
     free(msg->get_successor_list_response);
     free(msg);
