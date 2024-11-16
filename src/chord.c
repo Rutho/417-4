@@ -118,8 +118,8 @@ void retransmit_request(OutstandingRequest *req, int sock) {
 // fill the gap?
 void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                          Entry *finger_table, Entry *successor_list,
-                         Entry **predecessor,
-                         OutstandingRequest *request_queue, uint64_t newk) {
+                         Entry **predecessor, OutstandingRequest *request_queue,
+                         uint64_t newk) {
   // If we delete something, we know that the best predecessors has
   // shifted once. For example, the 2nd best predecessor is now best predecessor
   // if we deleted the best predecessor. If we don't delete anything, we know we
@@ -357,9 +357,8 @@ int main(int argc, char *argv[]) {
     uint64_t newk = sha1sum_truncated_head(extended_key);
     sha1sum_reset(ctx);
     sha1sum_destroy(ctx);
-    join_chord_ring_send(key, newk,
-                         (struct sockaddr *)&args.join_address, ssock,
-                         request_queue, 1);
+    join_chord_ring_send(key, newk, (struct sockaddr *)&args.join_address,
+                         ssock, request_queue, 1);
   }
 
   // Initialize timevals for periodic updates
@@ -419,7 +418,7 @@ int main(int argc, char *argv[]) {
           inet_ntop(AF_INET, &new_finger->address, adr, sizeof(adr));
           printf("< ");
           printf("%" PRIu64 " %s %u\n", curr_req->node_id, adr,
-                ntohs(new_finger->port));
+                 ntohs(new_finger->port));
           delete_request(request_queue, curr_req);
           printf("> ");
           fflush(stdout);
@@ -486,7 +485,8 @@ int main(int argc, char *argv[]) {
           check_predecessor_send(client, (struct sockaddr *)&jaddr, ssock,
                                  request_queue, check_pred);
         }
-        get_future_timestamp(&next_check_pred_time, args.check_predecessor_period * 1E-1);
+        get_future_timestamp(&next_check_pred_time,
+                             args.check_predecessor_period * 1E-1);
         break;
       case FIX_FINGERS:
 
@@ -495,11 +495,11 @@ int main(int argc, char *argv[]) {
         if (fix_finger_index >= MOD_M) {
           fix_finger_index = 0;
         }
-        find_successor(*client,
-                       client->key + ((int)pow(2, (fix_finger_index))),
+        find_successor(*client, client->key + ((int)pow(2, (fix_finger_index))),
                        finger_table, successor_list, request_queue,
                        fix_fingers_find_successor, fix_finger_index, ssock, 1);
-        get_future_timestamp(&next_fix_fingers_time, args.fix_fingers_period * 1E-1);
+        get_future_timestamp(&next_fix_fingers_time,
+                             args.fix_fingers_period * 1E-1);
         break;
       case STABILIZE:
 
@@ -542,7 +542,7 @@ int main(int argc, char *argv[]) {
                          extended_key);
           uint64_t truncated_key = sha1sum_truncated_head(extended_key);
           printf("< %s %" PRIu64 "\n", lookup_string, truncated_key);
-          printf("%lu\n", truncated_key);
+
           sha1sum_destroy(ctx);
           free(lookup_string);
 
