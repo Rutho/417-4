@@ -45,7 +45,7 @@
 
 #define STDIN 0
 #define MAX_BYTES 50
-#define RETRANSMIT_TIMEOUT_SECS 10
+#define RETRANSMIT_TIMEOUT_SECS 2
 #define TRANSMISSION_ATTEMPTS 2
 #define MOD_M 64
 void printKey(uint64_t key) { printf("%" PRIu64 "\n", key); }
@@ -72,8 +72,10 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
     next_action_timeval = next_stabilize;
     action_flag = STABILIZE;
   }
-
-  double time_to_next_action = get_time_diff_now_secs(next_action_timeval);
+  struct timeval now;
+  get_timeval_now(&now);
+  double time_to_next_action = get_time_diff_secs(next_action_timeval, &now);
+  printf("timeout_to_next: %d\n", time_to_next_action);
   if (time_to_next_action < 0) {
     timeout->tv_sec = 0;
     timeout->tv_usec = 0;
@@ -120,7 +122,7 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                          Entry **predecessor, struct chord_arguments *args,
                          OutstandingRequest *request_queue) {
   uint8_t *concatenation;
-
+  
   concatenate_port_addr((uint8_t *)&args->join_address.sin_port,
                         (uint8_t *)&args->join_address.sin_addr.s_addr,
                         concatenation);
@@ -408,6 +410,7 @@ int main(int argc, char *argv[]) {
         switch (curr_req->message_type) {
         // we dont need a case for it being local the -1 already makes it local.
         case fix_fingers_find_successor: {
+          printf("curr_req->finger_index: %d\n", curr_req->finger_index);
           Entry *old_finger =
               find_entry_at_index(finger_table, curr_req->finger_index);
           Entry *new_finger =
@@ -437,6 +440,7 @@ int main(int argc, char *argv[]) {
           inet_ntop(AF_INET, &new_finger->address, adr, sizeof(adr));
           printf("< ");
           printf("%" PRIu64 " %s %u\n", curr_req->node_id, adr,
+          printf("%" PRIu64 " %s %u\n", curr_req->node_id, adr,
                  ntohs(new_finger->port));
           delete_request(request_queue, curr_req);
           printf("> ");
@@ -454,7 +458,6 @@ int main(int argc, char *argv[]) {
     while (incrm != request_queue) {
       curr_req = incrm;
       incrm = incrm->next;
-
       switch (request_timed_out(curr_req, RETRANSMIT_TIMEOUT_SECS,
                                 TRANSMISSION_ATTEMPTS)) {
       // Not timed out
@@ -506,7 +509,7 @@ int main(int argc, char *argv[]) {
           check_predecessor_send(client, (struct sockaddr *)&jaddr, ssock,
                                  request_queue, check_pred);
         }
-        shift_timeval(&next_check_pred_time, args.check_predecessor_period);
+        get_future_timestamp(&next_check_pred_time, args.check_predecessor_period * 1E-1);
         break;
       case FIX_FINGERS:
 
@@ -519,7 +522,8 @@ int main(int argc, char *argv[]) {
                        client->key + ((int)pow(2, (fix_finger_index - 1))),
                        finger_table, successor_list, request_queue,
                        fix_fingers_find_successor, fix_finger_index, ssock, 1);
-        shift_timeval(&next_fix_fingers_time, args.fix_fingers_period);
+        get_future_timestamp(&next_fix_fingers_time, args.fix_fingers_period * 1E-1);
+        printf("time_secs: %d, arg: %d\n", next_fix_fingers_time.tv_sec, args.fix_fingers_period * 1E-1);
         break;
       case STABILIZE:
 
@@ -534,7 +538,7 @@ int main(int argc, char *argv[]) {
           get_predecessor_send(key, (struct sockaddr *)&jaddr, ssock,
                                request_queue, get_pred, -1);
         }
-        shift_timeval(&next_stabilize_time, args.fix_fingers_period);
+        get_future_timestamp(&next_stabilize_time, args.stablize_period * 1E-1);
         break;
       }
     } else {
@@ -718,7 +722,7 @@ int main(int argc, char *argv[]) {
                       higher, msg, (struct sockaddr *)&tmp, 1);
               push_request(request_queue, new_req);
               delete_request_by_query_id(request_queue, k->query_id);
-
+              free(new_req);
               // push_entry(request_queue,new_req);
               // delete_entry_at_index(request_queue,rq_index);
               // free_request(k);
@@ -739,6 +743,7 @@ int main(int argc, char *argv[]) {
                     finger_table, k->finger_index, pred);
               } break;
               case (join_find_successor): {
+                printf("join\n");
                 push_entry(finger_table, pred);
                 push_entry(successor_list, pred);
                 free(pred);
@@ -801,6 +806,7 @@ int main(int argc, char *argv[]) {
               tmp.port = rsp->successors[i]->address;
               tmp.address = rsp->successors[i]->address;
               push_entry(successor_list, &tmp);
+              free(&tmp);
             }
           } break;
           case CHORD_MESSAGE__MSG_NOTIFY_RESPONSE: {

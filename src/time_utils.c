@@ -10,13 +10,13 @@ void get_timeval_now(struct timeval *time) {
   clock_gettime(CLOCK_REALTIME, &time_now_timespec);
   memset(time, 0, sizeof(struct timeval));
   time->tv_sec = time_now_timespec.tv_sec;
-  time->tv_usec = time_now_timespec.tv_nsec * 1E-3;
+  time->tv_usec = (suseconds_t)(time_now_timespec.tv_nsec * 1E-3);
   return;
 }
 
 // Returns the timeval values in seconds
 double timeval_to_secs(struct timeval *time) {
-  return time->tv_sec + time->tv_usec * 1E-6;
+  return (double)((double)time->tv_sec + (double)(time->tv_usec * 1E-6));
 }
 
 // Sets the field values of timeval provided to time_secs
@@ -49,8 +49,8 @@ void get_future_timestamp(struct timeval *time, double secs) {
 }
 
 void shift_timeval(struct timeval *time, double secs) {
-  time->tv_sec += (int)secs;
-  time->tv_usec += secs - ((int)secs);
+  time->tv_sec = (time->tv_sec + (int)secs);
+  time->tv_usec += ((secs - ((int)secs)) * 1E6);
 }
 
 #endif
