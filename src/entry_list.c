@@ -109,16 +109,22 @@ int delete_entry_at_index(Entry *head, int index) {
 }
 
 // Removes all entries with the given key
+// If replace_with_null is 1, instead just set the entry's key to NULL.
+// If replace_with_null is 0, delete it and free it.
 // Returns 1 if we deleted something (an entry with that key existed).
 // Otherwise, return 0
-int delete_entries_by_key(Entry *head, uint64_t key) {
+int delete_entries_by_key(Entry *head, uint64_t key, int replace_with_null) {
   Entry *curr = head->next;
   int deleted_smth = 0;
   while (curr != head) {
     if (curr->key == key) {
-      curr->prev->next = curr->next;
-      curr->next->prev = curr->prev;
-      free(curr);
+      if (replace_with_null) {
+        curr->key = NULL;
+      } else {
+        curr->prev->next = curr->next;
+        curr->next->prev = curr->prev;
+        free(curr);
+      }
       deleted_smth = 1;
     }
     curr = curr->next;
@@ -143,6 +149,9 @@ void wipe_entry_list(Entry *head) {
 // returns the entry at the given index
 // Note that if index >= size, it will return last entry
 Entry *find_entry_at_index(Entry *head, int index) {
+  if (index >= entry_list_size(head)) {
+    return NULL;
+  }
   Entry *curr = head->next;
   int curr_index = 0;
   while (curr_index < index && curr->next != head) {
@@ -155,13 +164,13 @@ Entry *find_entry_at_index(Entry *head, int index) {
 Entry *find_entry_by_key(Entry *head, uint64_t key) {
   Entry *curr = head->next;
   while (curr != head) {
-    if (curr->key == key) {
+    if (curr->key != NULL && curr->key == key) {
       return curr;
     }
     curr = curr->next;
   }
   // We weren't looking for head and didn't find a match
-  if (head->key != key && curr->key == key) {
+  if (curr->key != key) {
     return NULL;
   }
   return curr;
@@ -169,12 +178,12 @@ Entry *find_entry_by_key(Entry *head, uint64_t key) {
 
 Entry *find_closest_predecessor_entry(Entry *head, uint64_t id) {
   if (entry_list_size(head) == 0) {
-    return NULL;
+    return head;
   }
   Entry *closest_predecessor = head->next;
   Entry *curr = head->next;
   while (curr->next != head) {
-    if (is_between_exclusive(closest_predecessor->key, curr->key, id)) {
+    if (curr->key != NULL && is_between_exclusive(closest_predecessor->key, curr->key, id)) {
       closest_predecessor = curr;
     }
     curr = curr->next;

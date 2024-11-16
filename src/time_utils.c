@@ -34,7 +34,7 @@ double get_time_diff_secs(struct timeval *time1, struct timeval *time2) {
   return time1_secs - time2_secs;
 }
 
-// Returns time that has passed from time1 to the time now (time_now - time1)
+// Returns time that has passed from time1 to the time now (time1 - time now)
 double get_time_diff_now_secs(struct timeval *time1) {
   struct timeval now;
   get_timeval_now(&now);

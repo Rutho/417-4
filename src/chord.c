@@ -79,6 +79,7 @@ PeriodicUpdateFlag next_timeout(struct timeval *next_check_pred,
     timeout->tv_usec = 0;
   } else {
     secs_to_timeval(time_to_next_action, timeout);
+    printf("time secs: %d, time microsecs: %d\n", timeout->tv_sec, timeout->tv_usec);
   }
 
   return action_flag;
@@ -150,8 +151,8 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
   // re(transmissions), we don't want to send another find_successor_request to
   // the best local predecessor p since there is a problem with its node path
   // currently, so we find the 2nd best local predecessor
-  if (delete_entries_by_key(finger_table, req->node_id) ||
-      delete_entries_by_key(successor_list, req->node_id)) {
+  if (delete_entries_by_key(finger_table, req->node_id, 1) ||
+      delete_entries_by_key(successor_list, req->node_id, 0)) {
     // req->nth_closest_predecessor;
   } else {
     // I'm assuming the join node will never be in the finger table or successor
@@ -196,7 +197,7 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                  (struct sockaddr *)&new_successor_addr);
     OutstandingRequest *new_req = construct_outstanding_request(
         generate_query_id(), get_pred, -1, req->sent_message,
-        (struct sockaddr *)&new_successor_addr, 1);
+        (struct sockaddr *)&new_successor_addr, req->nth_closest_predecessor);
     push_request(request_queue, new_req);
 
     delete_request(request_queue, req);
@@ -369,10 +370,6 @@ int main(int argc, char *argv[]) {
     join_chord_ring_send(client, key, newk,
                          (struct sockaddr *)&args.join_address, ssock,
                          request_queue, 1);
-
-    printf("what we hash the chord owner to\n");
-    printKey(newk);
-    printf("\n");
   }
 
   // Initialize timevals for periodic updates
@@ -404,12 +401,17 @@ int main(int argc, char *argv[]) {
         switch (curr_req->message_type) {
         // we dont need a case for it being local the -1 already makes it local.
         case fix_fingers_find_successor: {
-
           Entry *old_finger =
               find_entry_at_index(finger_table, curr_req->finger_index);
-          // If we don't find a match, we might be misusing local requests.
           Entry *new_finger =
               find_entry_by_key(successor_list, curr_req->node_id);
+          //First ever time finger table has expanded to this size.
+          if (old_finger == NULL) {
+            old_finger = push(finger_table, new_finger);
+          }
+          update_entry(old_finger, new_finger->key, new_finger->address, new_finger->port);
+          // If we don't find a match, we might be misusing local requests.
+
           update_entry(old_finger, new_finger->key, new_finger->address,
                        new_finger->port);
           delete_request_by_query_id(request_queue, curr_req->query_id);
@@ -483,11 +485,11 @@ int main(int argc, char *argv[]) {
     if (s_turn == 0) {
       switch (next_periodic_update_flag) {
       case CHECK_PREDECESSOR:
-        if (predecessor != NULL) {
+        if (predecessor) {
           struct sockaddr_in jaddr;
           jaddr.sin_family = AF_INET;
-          jaddr.sin_addr.s_addr = predecessor->address;
-          jaddr.sin_port = predecessor->port;
+          jaddr.sin_addr.s_addr = predecessor->next->address;
+          jaddr.sin_port = predecessor->next->port;
 
           check_predecessor_send(client, (struct sockaddr *)&jaddr, ssock,
                                  request_queue, check_pred);
@@ -497,11 +499,11 @@ int main(int argc, char *argv[]) {
       case FIX_FINGERS:
         // find_successor will require a finger_index
         fix_finger_index++;
-        if (fix_finger_index >= MOD_M) {
-          fix_finger_index = 0;
+        if (fix_finger_index > MOD_M) {
+          fix_finger_index = 1;
         }
         find_successor(*client,
-                       client->key + ((uint64_t)pow(2, (fix_finger_index))),
+                       client->key + ((int)pow(2, (fix_finger_index - 1))),
                        finger_table, successor_list, request_queue,
                        fix_fingers_find_successor, fix_finger_index, ssock, 1);
         shift_timeval(&next_fix_fingers_time, args.fix_fingers_period);
@@ -519,7 +521,6 @@ int main(int argc, char *argv[]) {
                                request_queue, get_pred, -1);
         }
         shift_timeval(&next_stabilize_time, args.fix_fingers_period);
-
         break;
       }
     } else {
@@ -531,8 +532,7 @@ int main(int argc, char *argv[]) {
         int printstate_length = 10;
         char buf[101];
         int num_bytes = read(STDIN, buf, 100);
-        // Read takes in the \n character at the end of stdin. This replaces it
-        // with the null terminator
+        //Read takes in the \n character at the end of stdin. This replaces it with the null terminator
         buf[num_bytes - 1] = '\x00';
         if (strncmp("Lookup", buf, lookup_length) == 0) {
           char *lookup_string = (char *)malloc(num_bytes - lookup_length + 1);
@@ -571,7 +571,6 @@ int main(int argc, char *argv[]) {
             pos++;
           }
           pos = 1;
-
           for (k = finger_table->next; k != finger_table; k = k->next) {
             char adr[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &k->address, adr, sizeof(adr));
@@ -605,14 +604,24 @@ int main(int argc, char *argv[]) {
           {
             struct FindSuccessorRequest *ls = msg->find_successor_request;
             uint64_t req_key = ls->key;
-            Entry *cessor = find_entry_at_index(finger_table, 0);
+            Entry *cessor = find_entry_at_index(successor_list, 0);
+            Entry *curr_successor = successor_list->next;
             Entry *will_send = NULL;
-            if (is_between_inclusive(key, req_key, cessor->key)) {
-
-              will_send = cessor;
-
-            } else {
-              will_send = find_closest_predecessor_entry(finger_table, req_key);
+            while (curr_successor != successor_list) {
+              if (is_between_inclusive(key, req_key, cessor->key)) {
+                will_send = curr_successor;
+              }
+              curr_successor = curr_successor->next;
+            }
+            if (will_send == NULL) {
+              Entry *best_finger_predecessor = find_closest_predecessor_entry(finger_table, req_key);
+              Entry *best_successor_predecessor = find_closest_predecessor_entry(successor_list, req_key);
+              if (best_finger_predecessor->key == NULL || 
+                  is_between_exclusive(best_finger_predecessor->key, best_successor_predecessor->key, req_key)) {
+                will_send = best_successor_predecessor;
+              } else {
+                will_send = best_finger_predecessor;
+              }
             }
 
             ChordMessage *sending =
@@ -639,9 +648,6 @@ int main(int argc, char *argv[]) {
             temp.sin_addr.s_addr = (tmp->address);
             temp.sin_family = AF_INET;
             Entry *newpred = init_entry(tmp->key, (struct sockaddr *)&temp);
-            if (predecessor == NULL) {
-              free(predecessor);
-            }
             predecessor = newpred;
           }
           ChordMessage *sending = construct_msg(
@@ -670,7 +676,7 @@ int main(int argc, char *argv[]) {
             struct FindSuccessorResponse *ls = msg->find_successor_response;
 
             Node *g_pred = ls->node;
-            uint64_t lower = key;
+            uint64_t lower = k->node_id;
             uint64_t higher = g_pred->key;
             uint64_t mid = k->input_id;
             // we have not found the successor and need to send further
@@ -704,7 +710,6 @@ int main(int argc, char *argv[]) {
               temp.sin_addr.s_addr = g_pred->address;
               temp.sin_family = AF_INET;
               Entry *pred = init_entry(g_pred->key, (struct sockaddr *)&temp);
-              delete_request_by_query_id(request_queue, msg->query_id);
 
               switch (k->message_type) {
 
@@ -714,7 +719,6 @@ int main(int argc, char *argv[]) {
                     finger_table, k->finger_index, pred);
               } break;
               case (join_find_successor): {
-
                 push_entry(finger_table, pred);
                 push_entry(successor_list, pred);
                 free(pred);
@@ -733,35 +737,20 @@ int main(int argc, char *argv[]) {
                 break;
               }
             }
-
             break;
-
-          } break;
+          } 
           case CHORD_MESSAGE__MSG_GET_PREDECESSOR_RESPONSE: {
 
             GetPredecessorResponse *k;
-            OutstandingRequest *ctex =
-                find_request_by_query_id(request_queue, msg->query_id);
             k = msg->get_predecessor_response;
-            uint64_t newprd = k->node->key;
-            if (k->node->port != -1) {
 
-              if (is_between_exclusive(key, newprd, ctex->node_id)) {
-
-                update_entry(finger_table->next, k->node->key, k->node->address,
-                             k->node->port);
-                update_entry(successor_list->next, k->node->key,
-                             k->node->address, k->node->port);
-              }
-            }
-            delete_request_by_query_id(request_queue, msg->query_id);
             struct sockaddr_in jaddr;
             jaddr.sin_family = AF_INET;
-            jaddr.sin_addr.s_addr = successor_list->next->address;
-            jaddr.sin_port = successor_list->next->port;
-            send_notif(client, key, successor_list->next->key,
-                       (struct sockaddr *)&jaddr, ssock, request_queue);
-
+            jaddr.sin_addr.s_addr = k->node->address;
+            jaddr.sin_port = k->node->port;
+            send_notif(client, key, k->node->key, (struct sockaddr *)&jaddr,
+                       ssock, request_queue);
+            delete_request_by_query_id(request_queue, msg->query_id);
             break;
           }
           case CHORD_MESSAGE__MSG_GET_SUCCESSOR_LIST_RESPONSE: {
