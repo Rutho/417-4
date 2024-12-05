@@ -145,6 +145,5 @@ struct chord_arguments chord_parseopt(int argc, char *argv[]) {
   }
 
   // TODO: ADDITIONAL ARGUMENT VALIDATION
-  printf("we ret\n");
   return args;
 }

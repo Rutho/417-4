@@ -101,7 +101,7 @@ void delete_requests_by_dest_address(OutstandingRequest *queue, struct sockaddr 
   
     if (req_dest_addr_inet->sin_addr.s_addr == dest_addr_inet->sin_addr.s_addr &&
         req_dest_addr_inet->sin_port == dest_addr_inet->sin_port) {
-      printf("target found\n");
+      //printf("target found\n");
       curr_req->prev->next = curr_req->next;
       curr_req->next->prev = curr_req->prev;
       free_outstanding_request(curr_req);

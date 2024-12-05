@@ -156,7 +156,7 @@ void wipe_entry_list(Entry *head) {
 // returns the entry at the given index
 // Note that if index >= size, it will return NULL
 Entry *find_entry_at_index(Entry *head, int index) {
-  printf("entry list size: %d\n", entry_list_size(head));
+  //printf("entry list size: %d\n", entry_list_size(head));
   if (index >= entry_list_size(head)) {
     return NULL;
   }

@@ -207,9 +207,8 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
     break;
   }
 
-  if (req->query_id != (uint64_t)-1) {
-    struct sockaddr_in *req_dest_addr_inet = (struct sockaddr_in *) req->dest_addr;
-    delete_requests_by_dest_address(request_queue, req_dest_addr_inet);
+  if (req->query_id != -1) {
+    delete_requests_by_dest_address(request_queue, req->dest_addr);
   }
 }
 
@@ -460,7 +459,6 @@ int main(int argc, char *argv[]) {
 
         // find_successor will require a finger_index
         fix_finger_index++;
-        printf("curr finger: %d\n", fix_finger_index); 
         if (fix_finger_index >= MOD_M) {
           fix_finger_index = 0;
         }
@@ -548,7 +546,6 @@ int main(int argc, char *argv[]) {
         struct sockaddr src_addr;
 
         ChordMessage *msg = recv_message(ssock, &src_addr);
-        printf("received msg case: %d\n", msg->msg_case);
         // cases to handle requests
         switch (msg->msg_case) {
         case CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST: {
@@ -717,7 +714,6 @@ int main(int argc, char *argv[]) {
               break;
             }
             struct sockaddr_in jaddr;
-            printf("k->node->address: %u\n", k->node->address);
             jaddr.sin_family = AF_INET;
             jaddr.sin_addr.s_addr = k->node->address;
             jaddr.sin_port = k->node->port;
