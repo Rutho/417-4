@@ -90,3 +90,16 @@ void delete_request(OutstandingRequest *queue, OutstandingRequest *req) {
     curr_req = curr_req->next;
   }
 }
+
+// void delete_request_by_dest_node(OutstandingRequest *queue, int re) {
+//   OutstandingRequest *curr_req = queue->next;
+//   while (curr_req != queue) {
+//     if (curr_req == req) {
+//       curr_req->prev->next = curr_req->next;
+//       curr_req->next->prev = curr_req->prev;
+//       free_outstanding_request(req);
+//       return;
+//     }
+//     curr_req = curr_req->next;
+//   }
+// }

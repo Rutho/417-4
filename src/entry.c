@@ -165,7 +165,15 @@ void handle_fix_fingers_find_successor_response(Entry *finger_table,
                                                 int finger_index,
                                                 Entry *resp_node) {
   Entry *entry = find_entry_at_index(finger_table, finger_index);
-  printf("looking for finger #%d\n", finger_index);
+  if (entry_list_size(finger_table) == finger_index) {
+    struct sockaddr_in resp_addr;
+    resp_addr.sin_family = AF_INET;
+    resp_addr.sin_addr.s_addr = resp_node->address;
+    resp_addr.sin_port = resp_node->port;
+    Entry *new_entry = init_entry(resp_node->key, (struct sockaddr *) &resp_addr);
+    push_entry(finger_table, new_entry);
+    free(new_entry);
+  }
   if (entry) {
     entry->address = resp_node->address;
     entry->port = resp_node->port;

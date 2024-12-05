@@ -611,7 +611,9 @@ int main(int argc, char *argv[]) {
             if (predecessor != NULL) {
               free(predecessor);
             }
+            Entry *temp_pred = predecessor;
             predecessor = newpred;
+            free(temp_pred);
           }
           ChordMessage *sending = construct_msg(
               CHORD_MESSAGE__MSG_NOTIFY_RESPONSE, -1, msg->query_id, NULL);
@@ -678,12 +680,10 @@ int main(int argc, char *argv[]) {
               case (fix_fingers_find_successor): {
                 handle_fix_fingers_find_successor_response(
                     finger_table, k->finger_index, pred);
-                free(pred);
               } break;
               case (join_find_successor): {
                 push_entry(finger_table, pred);
                 push_entry(successor_list, pred);
-                free(pred);
                 break;
               }
               case (user_lookup): {
@@ -699,6 +699,7 @@ int main(int argc, char *argv[]) {
                 break;
               }
               delete_request_by_query_id(request_queue, k->query_id);
+              free(pred);
               break;
             }
           }
