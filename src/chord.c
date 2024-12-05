@@ -97,7 +97,6 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
                          Entry *finger_table, Entry *successor_list,
                          Entry **predecessor,
                          OutstandingRequest *request_queue, uint64_t newk) {
-  printf("failed\n");
   if (delete_entries_by_key(finger_table, req->node_id, 1) ||
       delete_entries_by_key(successor_list, req->node_id, 0)) {
     // req->nth_closest_predecessor;
@@ -206,6 +205,11 @@ void handle_node_failure(int sock, Entry *client, OutstandingRequest *req,
 
   default:
     break;
+  }
+
+  if (req->query_id != (uint64_t)-1) {
+    struct sockaddr_in *req_dest_addr_inet = (struct sockaddr_in *) req->dest_addr;
+    delete_requests_by_dest_address(request_queue, req_dest_addr_inet);
   }
 }
 

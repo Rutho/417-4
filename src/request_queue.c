@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include "../include/outstanding_request.h"
 #include "../include/queue.h"
@@ -91,15 +93,19 @@ void delete_request(OutstandingRequest *queue, OutstandingRequest *req) {
   }
 }
 
-// void delete_request_by_dest_node(OutstandingRequest *queue, int re) {
-//   OutstandingRequest *curr_req = queue->next;
-//   while (curr_req != queue) {
-//     if (curr_req == req) {
-//       curr_req->prev->next = curr_req->next;
-//       curr_req->next->prev = curr_req->prev;
-//       free_outstanding_request(req);
-//       return;
-//     }
-//     curr_req = curr_req->next;
-//   }
-// }
+void delete_requests_by_dest_address(OutstandingRequest *queue, struct sockaddr *dest_addr) {
+  OutstandingRequest *curr_req = queue->next;
+  struct sockaddr_in *dest_addr_inet = (struct sockaddr_in *)dest_addr;
+  while (curr_req != queue) {
+    struct sockaddr_in *req_dest_addr_inet = (struct sockaddr_in *)curr_req->dest_addr;
+  
+    if (req_dest_addr_inet->sin_addr.s_addr == dest_addr_inet->sin_addr.s_addr &&
+        req_dest_addr_inet->sin_port == dest_addr_inet->sin_port) {
+      printf("target found\n");
+      curr_req->prev->next = curr_req->next;
+      curr_req->next->prev = curr_req->prev;
+      free_outstanding_request(curr_req);
+    }
+    curr_req = curr_req->next;
+  }
+}

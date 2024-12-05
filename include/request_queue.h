@@ -13,5 +13,6 @@ OutstandingRequest *find_request_by_query_id(OutstandingRequest *queue,
                                              int query_id);
 void delete_request(OutstandingRequest *queue, OutstandingRequest *req);
 void delete_request_by_query_id(OutstandingRequest *queue, int query_id);
+void delete_requests_by_dest_address(OutstandingRequest *queue, struct sockaddr *dest_addr);
 
 #endif
