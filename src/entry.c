@@ -164,13 +164,9 @@ void fix_finger_find_successor_request_send(
 void handle_fix_fingers_find_successor_response(Entry *finger_table,
                                                 int finger_index,
                                                 Entry *resp_node) {
-
-  if (finger_index >= entry_list_size(finger_table)) {
-
-    push_entry(finger_table, resp_node);
-  } else {
-    Entry *entry = find_entry_at_index(finger_table, finger_index);
-
+  Entry *entry = find_entry_at_index(finger_table, finger_index);
+  printf("looking for finger #%d\n", finger_index);
+  if (entry) {
     entry->address = resp_node->address;
     entry->port = resp_node->port;
     entry->key = resp_node->key;

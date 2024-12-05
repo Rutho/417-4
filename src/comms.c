@@ -6,6 +6,7 @@
 #include "../include/entry.h"
 #include "../include/entry_list.h"
 #include "../include/time_utils.h"
+#include <arpa/inet.h>
 #include <endian.h>
 #include <math.h>
 #include <netinet/in.h>
@@ -39,7 +40,7 @@ int send_message(ChordMessage *chord_msg, int sock, struct sockaddr *info) {
   memcpy(msg_buf, &chord_msg_len, sizeof(uint64_t));
   chord_message__pack(chord_msg, msg_buf + sizeof(uint64_t));
   sendto(sock, msg_buf, buf_size, 0, info, sizeof(struct sockaddr_in));
-
+  printf("send msg case: %d, to address %s:%d, query_id: %d\n", chord_msg->msg_case, inet_ntoa(((struct sockaddr_in *) info)->sin_addr), ((struct sockaddr_in *) info)->sin_port, chord_msg->query_id);
   free(msg_buf);
   return chord_msg->query_id;
 }
@@ -59,7 +60,7 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
 
   ChordMessage *recvd_chord_msg =
       chord_message__unpack(NULL, msg_size, buffr + sizeof(uint64_t));
-
+  printf("received msg case: %d, from address %s:%d, send_qid: %d\n", recvd_chord_msg->msg_case, inet_ntoa(((struct sockaddr_in *) info)->sin_addr), ((struct sockaddr_in *) info)->sin_port, recvd_chord_msg->query_id);
   free(buffr);
   return recvd_chord_msg;
 }
@@ -67,7 +68,6 @@ ChordMessage *recv_message(int sock, struct sockaddr *info) {
 ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
                             Entry *optional) {
   ChordMessage *ret = 0;
-
   switch (cs) {
 
   case CHORD_MESSAGE__MSG_FIND_SUCCESSOR_REQUEST: {
@@ -191,7 +191,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     chord_message__init(cloak);
     cloak->version = 417;
     cloak->has_query_id = 1;
-    cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
+    cloak->msg_case = CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_REQUEST;
 
     cloak->check_predecessor_request = rq;
     cloak->query_id = qid;
@@ -206,7 +206,7 @@ ChordMessage *construct_msg(ChordMessage__MsgCase cs, int id, int qid,
     chord_message__init(cloak);
     cloak->version = 417;
 
-    cloak->msg_case = CHORD_MESSAGE__MSG_GET_PREDECESSOR_REQUEST;
+    cloak->msg_case = CHORD_MESSAGE__MSG_CHECK_PREDECESSOR_RESPONSE;
     cloak->has_query_id = 1;
     cloak->check_predecessor_response = rq;
     cloak->query_id = qid;

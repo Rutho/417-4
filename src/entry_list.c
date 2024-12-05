@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "../include/entry.h"
 #include "../include/entry_list.h"
@@ -115,7 +116,7 @@ int delete_entry_at_index(Entry *head, int index) {
 // If replace_with_null is 0, delete it and free it.
 // Returns 1 if we deleted something (an entry with that key existed).
 // Otherwise, return 0
-int delete_entries_by_key(Entry *head, uint64_t key, int replace_with_null) {
+int delete_entries_by_key(Entry *head, uint64_t key, int replace_with_zero) {
   Entry *curr = head->next;
   Entry *incrm = curr;
   int deleted_smth = 0;
@@ -123,7 +124,7 @@ int delete_entries_by_key(Entry *head, uint64_t key, int replace_with_null) {
     curr = incrm;
     incrm = incrm->next;
     if (curr->key == key && curr->key != head->key) {
-      if (replace_with_null) {
+      if (replace_with_zero) {
         curr->key = 0;
         curr->port = 0;
         curr->address = 0;
@@ -155,12 +156,13 @@ void wipe_entry_list(Entry *head) {
 // returns the entry at the given index
 // Note that if index >= size, it will return NULL
 Entry *find_entry_at_index(Entry *head, int index) {
+  printf("entry list size: %d\n", entry_list_size(head));
   if (index >= entry_list_size(head)) {
     return NULL;
   }
   Entry *curr = head->next;
   int curr_index = 0;
-  while (curr_index < index && curr->next != head) {
+  while (curr_index < index) {
     curr = curr->next;
     curr_index++;
   }
@@ -170,7 +172,7 @@ Entry *find_entry_at_index(Entry *head, int index) {
 Entry *find_entry_by_key(Entry *head, uint64_t key) {
   Entry *curr = head->next;
   while (curr != head) {
-    if (curr->key != head->key && curr->key == key) {
+    if (curr->key == key) {
       return curr;
     }
     curr = curr->next;

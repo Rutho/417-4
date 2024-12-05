@@ -117,7 +117,6 @@ error_t chord_parser(int key, char *arg, struct argp_state *state) {
 }
 
 struct chord_arguments chord_parseopt(int argc, char *argv[]) {
-  printf("we segfault in here\n");
   struct argp_option options[] = {
       {"port", 'p', "port", 0, "The port that is being used at the chord node",
        0},
